@@ -1,1 +1,74 @@
 /* You can add global styles to this file, and also import other style files */
+@import '@angular/material/prebuilt-themes/indigo-pink.css';
+
+/* Import Google Fonts */
+@import url('https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap');
+@import url('https://fonts.googleapis.com/icon?family=Material+Icons');
+
+/* Custom styles for the demo app */
+html, body {
+  margin: 0;
+  padding: 0;
+  font-family: Roboto, "Helvetica Neue", sans-serif;
+  background-color: #f5f5f5;
+  height: 100%;
+}
+
+/* Fix Material button text alignment */
+.mat-mdc-button,
+.mat-mdc-raised-button,
+.mat-mdc-outlined-button,
+.mat-mdc-unelevated-button {
+  .mdc-button__label {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 8px !important;
+  }
+}
+
+/* Fix Material chip text alignment */
+.mat-mdc-chip {
+  .mdc-evolution-chip__text-label {
+    display: flex !important;
+    align-items: center !important;
+    gap: 4px !important;
+  }
+}
+
+/* Fix Material icon alignment in buttons and chips */
+.mat-icon {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  vertical-align: middle !important;
+  line-height: 1 !important;
+}
+
+/* Ensure proper line height for all text elements */
+* {
+  box-sizing: border-box;
+}
+
+button, .mat-mdc-button, .mat-mdc-raised-button {
+  line-height: normal !important;
+}
+
+/* Custom snackbar styles */
+.success-snackbar {
+  background-color: #4caf50 !important;
+  color: white !important;
+}
+
+.error-snackbar {
+  background-color: #f44336 !important;
+  color: white !important;
+}
+
+/* Fix any potential flexbox alignment issues */
+.mat-mdc-button .mat-icon,
+.mat-mdc-raised-button .mat-icon,
+.mat-mdc-chip .mat-icon {
+  margin: 0 !important;
+  vertical-align: middle !important;
+}
