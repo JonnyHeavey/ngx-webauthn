@@ -17,11 +17,23 @@ import {
   WebAuthnSupport,
   RegistrationResponse,
   AuthenticationResponse,
-  FlexibleRegistrationOptions,
-  FlexibleAuthenticationOptions,
   WebAuthnRegistrationResult,
   WebAuthnAuthenticationResult,
 } from '../models/webauthn.models';
+
+import {
+  RegisterInput,
+  AuthenticateInput,
+  isRegisterConfig,
+  isAuthenticateConfig,
+} from '../models/register-config.models';
+
+import {
+  buildCreationOptionsFromConfig,
+  buildRequestOptionsFromConfig,
+  validateRegisterConfig,
+  validateAuthenticateConfig,
+} from '../utils/preset.utils';
 
 import {
   WebAuthnError,
@@ -35,6 +47,15 @@ import {
 } from '../errors/webauthn.errors';
 
 import { WEBAUTHN_CONFIG } from '../config/webauthn.config';
+
+// Import consolidated utility functions
+import {
+  arrayBufferToBase64url,
+  getSupportedTransports,
+  isJSONOptions,
+  isPublicKeyCredential,
+  isWebAuthnSupported,
+} from '../utils/webauthn.utils';
 
 /**
  * Enhanced Angular service for WebAuthn operations
@@ -51,14 +72,7 @@ export class WebAuthnService {
    * Checks if WebAuthn is supported in the current browser
    */
   isSupported(): boolean {
-    return !!(
-      typeof window !== 'undefined' &&
-      window.PublicKeyCredential &&
-      typeof navigator !== 'undefined' &&
-      navigator.credentials &&
-      typeof navigator.credentials.create === 'function' &&
-      typeof navigator.credentials.get === 'function'
-    );
+    return isWebAuthnSupported();
   }
 
   /**
@@ -80,7 +94,7 @@ export class WebAuthnService {
       map((isPlatformAvailable) => ({
         isSupported: true,
         isPlatformAuthenticatorAvailable: isPlatformAvailable,
-        supportedTransports: this.getSupportedTransports(),
+        supportedTransports: getSupportedTransports(),
       })),
       catchError((error) =>
         throwError(
@@ -96,38 +110,43 @@ export class WebAuthnService {
   }
 
   /**
-   * Registers a new WebAuthn credential with flexible options support
+   * Registers a new WebAuthn credential with flexible configuration support
    *
-   * @param options Either JSON-serializable options (with base64url strings) or native options (with ArrayBuffers)
+   * @param input Either a high-level RegisterConfig with presets, or direct WebAuthn creation options
    * @returns Observable of RegistrationResponse with clean, developer-friendly format
    *
    * @example
    * ```typescript
-   * // JSON options (easy for developers)
-   * const jsonOptions = {
-   *   challenge: "Y2hhbGxlbmdl", // base64url string
-   *   rp: { name: "My App" },
-   *   user: { id: "dXNlcklk", name: "user@example.com", displayName: "User" },
-   *   pubKeyCredParams: [{ type: "public-key", alg: -7 }]
-   * };
+   * // Simple preset usage
+   * this.webAuthnService.register({ username: 'john.doe', preset: 'passkey' });
    *
-   * // Native options (for advanced users)
-   * const nativeOptions = {
+   * // Preset with overrides
+   * this.webAuthnService.register({
+   *   username: 'john.doe',
+   *   preset: 'passkey',
+   *   authenticatorSelection: { userVerification: 'required' }
+   * });
+   *
+   * // Direct WebAuthn options (native)
+   * const nativeOptions: PublicKeyCredentialCreationOptions = {
    *   challenge: new Uint8Array([...]),
    *   rp: { name: "My App" },
    *   user: { id: new Uint8Array([...]), name: "user@example.com", displayName: "User" },
    *   pubKeyCredParams: [{ type: "public-key", alg: -7 }]
    * };
+   * this.webAuthnService.register(nativeOptions);
    *
-   * this.webAuthnService.register(jsonOptions).subscribe({
-   *   next: (response) => console.log('Success!', response),
-   *   error: (error) => console.error('Error:', error)
-   * });
+   * // Direct WebAuthn options (JSON)
+   * const jsonOptions: PublicKeyCredentialCreationOptionsJSON = {
+   *   challenge: "Y2hhbGxlbmdl",
+   *   rp: { name: "My App" },
+   *   user: { id: "dXNlcklk", name: "user@example.com", displayName: "User" },
+   *   pubKeyCredParams: [{ type: "public-key", alg: -7 }]
+   * };
+   * this.webAuthnService.register(jsonOptions);
    * ```
    */
-  register(
-    options: FlexibleRegistrationOptions
-  ): Observable<RegistrationResponse> {
+  register(input: RegisterInput): Observable<RegistrationResponse> {
     if (!this.isSupported()) {
       return throwError(
         () =>
@@ -138,8 +157,20 @@ export class WebAuthnService {
     }
 
     try {
-      const parsedOptions = this.parseRegistrationOptions(options);
-      this.logDebug('Parsed registration options:', parsedOptions);
+      let creationOptions:
+        | PublicKeyCredentialCreationOptions
+        | PublicKeyCredentialCreationOptionsJSON;
+
+      if (isRegisterConfig(input)) {
+        // High-level config path: validate, resolve preset, build options
+        validateRegisterConfig(input);
+        creationOptions = buildCreationOptionsFromConfig(input, this.config);
+      } else {
+        // Direct options path: use provided options
+        creationOptions = input;
+      }
+
+      const parsedOptions = this.parseRegistrationOptions(creationOptions);
 
       return from(
         navigator.credentials.create({ publicKey: parsedOptions })
@@ -151,7 +182,7 @@ export class WebAuthnService {
       return throwError(
         () =>
           new InvalidOptionsError(
-            'Failed to parse registration options',
+            'Failed to process registration input',
             error as Error
           )
       );
@@ -159,31 +190,45 @@ export class WebAuthnService {
   }
 
   /**
-   * Authenticates using an existing WebAuthn credential with flexible options support
+   * Authenticates using an existing WebAuthn credential with flexible configuration support
    *
-   * @param options Either JSON-serializable options (with base64url strings) or native options (with ArrayBuffers)
+   * @param input Either a high-level AuthenticateConfig with presets, or direct WebAuthn request options
    * @returns Observable of AuthenticationResponse with clean, developer-friendly format
    *
    * @example
    * ```typescript
-   * // JSON options (easy for developers)
-   * const jsonOptions = {
-   *   challenge: "Y2hhbGxlbmdl", // base64url string
+   * // Simple preset usage
+   * this.webAuthnService.authenticate({ preset: 'passkey' });
+   *
+   * // Config with credential filtering
+   * this.webAuthnService.authenticate({
+   *   username: 'john.doe',
+   *   preset: 'secondFactor',
+   *   allowCredentials: ['credential-id-1', 'credential-id-2']
+   * });
+   *
+   * // Direct WebAuthn options (JSON)
+   * const jsonOptions: PublicKeyCredentialRequestOptionsJSON = {
+   *   challenge: "Y2hhbGxlbmdl",
    *   allowCredentials: [{
    *     type: "public-key",
-   *     id: "Y3JlZElk" // base64url string
+   *     id: "Y3JlZElk"
    *   }]
    * };
+   * this.webAuthnService.authenticate(jsonOptions);
    *
-   * this.webAuthnService.authenticate(jsonOptions).subscribe({
-   *   next: (response) => console.log('Authenticated!', response),
-   *   error: (error) => console.error('Error:', error)
-   * });
+   * // Direct WebAuthn options (native)
+   * const nativeOptions: PublicKeyCredentialRequestOptions = {
+   *   challenge: new Uint8Array([...]),
+   *   allowCredentials: [{
+   *     type: "public-key",
+   *     id: new Uint8Array([...])
+   *   }]
+   * };
+   * this.webAuthnService.authenticate(nativeOptions);
    * ```
    */
-  authenticate(
-    options: FlexibleAuthenticationOptions
-  ): Observable<AuthenticationResponse> {
+  authenticate(input: AuthenticateInput): Observable<AuthenticationResponse> {
     if (!this.isSupported()) {
       return throwError(
         () =>
@@ -194,8 +239,20 @@ export class WebAuthnService {
     }
 
     try {
-      const parsedOptions = this.parseAuthenticationOptions(options);
-      this.logDebug('Parsed authentication options:', parsedOptions);
+      let requestOptions:
+        | PublicKeyCredentialRequestOptions
+        | PublicKeyCredentialRequestOptionsJSON;
+
+      if (isAuthenticateConfig(input)) {
+        // High-level config path: validate, resolve preset, build options
+        validateAuthenticateConfig(input);
+        requestOptions = buildRequestOptionsFromConfig(input, this.config);
+      } else {
+        // Direct options path: use provided options
+        requestOptions = input;
+      }
+
+      const parsedOptions = this.parseAuthenticationOptions(requestOptions);
 
       return from(navigator.credentials.get({ publicKey: parsedOptions })).pipe(
         map((credential) => this.processAuthenticationResult(credential)),
@@ -205,7 +262,7 @@ export class WebAuthnService {
       return throwError(
         () =>
           new InvalidOptionsError(
-            'Failed to parse authentication options',
+            'Failed to process authentication input',
             error as Error
           )
       );
@@ -216,9 +273,11 @@ export class WebAuthnService {
    * Parses registration options, handling both JSON and native formats
    */
   private parseRegistrationOptions(
-    options: FlexibleRegistrationOptions
+    options:
+      | PublicKeyCredentialCreationOptions
+      | PublicKeyCredentialCreationOptionsJSON
   ): PublicKeyCredentialCreationOptions {
-    if (this.isJSONOptions(options)) {
+    if (isJSONOptions(options)) {
       // Use native browser function for JSON options
       return PublicKeyCredential.parseCreationOptionsFromJSON(
         options as PublicKeyCredentialCreationOptionsJSON
@@ -233,9 +292,11 @@ export class WebAuthnService {
    * Parses authentication options, handling both JSON and native formats
    */
   private parseAuthenticationOptions(
-    options: FlexibleAuthenticationOptions
+    options:
+      | PublicKeyCredentialRequestOptions
+      | PublicKeyCredentialRequestOptionsJSON
   ): PublicKeyCredentialRequestOptions {
-    if (this.isJSONOptions(options)) {
+    if (isJSONOptions(options)) {
       // Use native browser function for JSON options
       return PublicKeyCredential.parseRequestOptionsFromJSON(
         options as PublicKeyCredentialRequestOptionsJSON
@@ -247,27 +308,19 @@ export class WebAuthnService {
   }
 
   /**
-   * Detects if options are JSON-like (base64url strings) or native (ArrayBuffers)
-   */
-  private isJSONOptions(options: any): boolean {
-    // Simple heuristic: JSON options have string challenges, native options have ArrayBuffer challenges
-    return typeof options.challenge === 'string';
-  }
-
-  /**
    * Processes the raw credential result into a clean RegistrationResponse
    */
   private processRegistrationResult(
     credential: Credential | null
   ): RegistrationResponse {
-    if (!credential || !this.isPublicKeyCredential(credential)) {
+    if (!isPublicKeyCredential(credential)) {
       throw new AuthenticatorError('No credential returned from authenticator');
     }
 
     const response = credential.response as AuthenticatorAttestationResponse;
 
     // Extract data using the response methods
-    const credentialId = this.arrayBufferToBase64url(credential.rawId);
+    const credentialId = arrayBufferToBase64url(credential.rawId);
     const transports = (response.getTransports?.() ||
       []) as AuthenticatorTransport[];
 
@@ -275,13 +328,10 @@ export class WebAuthnService {
     try {
       const publicKeyBuffer = response.getPublicKey?.();
       if (publicKeyBuffer) {
-        publicKey = this.arrayBufferToBase64url(publicKeyBuffer);
+        publicKey = arrayBufferToBase64url(publicKeyBuffer);
       }
     } catch {
       // Public key extraction failed - this is okay, not all algorithms are supported
-      this.logDebug(
-        'Public key extraction failed - algorithm may not be supported by user agent'
-      );
     }
 
     // Create the raw response for backward compatibility
@@ -289,13 +339,9 @@ export class WebAuthnService {
       credentialId,
       publicKey:
         publicKey ||
-        this.arrayBufferToBase64url(
-          response.getPublicKey?.() || new ArrayBuffer(0)
-        ),
-      attestationObject: this.arrayBufferToBase64url(
-        response.attestationObject
-      ),
-      clientDataJSON: this.arrayBufferToBase64url(response.clientDataJSON),
+        arrayBufferToBase64url(response.getPublicKey?.() || new ArrayBuffer(0)),
+      attestationObject: arrayBufferToBase64url(response.attestationObject),
+      clientDataJSON: arrayBufferToBase64url(response.clientDataJSON),
       transports: transports,
     };
 
@@ -314,26 +360,24 @@ export class WebAuthnService {
   private processAuthenticationResult(
     credential: Credential | null
   ): AuthenticationResponse {
-    if (!credential || !this.isPublicKeyCredential(credential)) {
+    if (!isPublicKeyCredential(credential)) {
       throw new AuthenticatorError('No credential returned from authenticator');
     }
 
     const response = credential.response as AuthenticatorAssertionResponse;
-    const credentialId = this.arrayBufferToBase64url(credential.rawId);
+    const credentialId = arrayBufferToBase64url(credential.rawId);
 
     let userHandle: string | undefined;
     if (response.userHandle) {
-      userHandle = this.arrayBufferToBase64url(response.userHandle);
+      userHandle = arrayBufferToBase64url(response.userHandle);
     }
 
     // Create the raw response for backward compatibility
     const rawResponse: WebAuthnAuthenticationResult = {
       credentialId,
-      authenticatorData: this.arrayBufferToBase64url(
-        response.authenticatorData
-      ),
-      clientDataJSON: this.arrayBufferToBase64url(response.clientDataJSON),
-      signature: this.arrayBufferToBase64url(response.signature),
+      authenticatorData: arrayBufferToBase64url(response.authenticatorData),
+      clientDataJSON: arrayBufferToBase64url(response.clientDataJSON),
+      signature: arrayBufferToBase64url(response.signature),
       userHandle,
     };
 
@@ -346,20 +390,9 @@ export class WebAuthnService {
   }
 
   /**
-   * Type guard to check if credential is a PublicKeyCredential
-   */
-  private isPublicKeyCredential(
-    credential: Credential
-  ): credential is PublicKeyCredential {
-    return credential.type === 'public-key';
-  }
-
-  /**
    * Enhanced error handling that maps DOMExceptions to specific error types
    */
   private handleWebAuthnError(error: any): Observable<never> {
-    this.logDebug('WebAuthn error occurred:', error);
-
     // Handle DOMExceptions from WebAuthn API
     if (error instanceof DOMException) {
       switch (error.name) {
@@ -418,49 +451,5 @@ export class WebAuthnService {
           error
         )
     );
-  }
-
-  /**
-   * Gets supported authenticator transports for this platform
-   */
-  private getSupportedTransports(): AuthenticatorTransport[] {
-    const transports: AuthenticatorTransport[] = ['usb', 'internal'];
-
-    // Add NFC support for Android devices
-    if (
-      typeof navigator !== 'undefined' &&
-      /Android/i.test(navigator.userAgent)
-    ) {
-      transports.push('nfc');
-    }
-
-    // Add BLE support for modern browsers with Web Bluetooth API
-    if (typeof navigator !== 'undefined' && (navigator as any).bluetooth) {
-      transports.push('ble');
-    }
-
-    return transports;
-  }
-
-  /**
-   * Converts ArrayBuffer to base64url string
-   */
-  private arrayBufferToBase64url(buffer: ArrayBuffer): string {
-    const bytes = new Uint8Array(buffer);
-    let binary = '';
-    for (let i = 0; i < bytes.byteLength; i++) {
-      binary += String.fromCharCode(bytes[i]);
-    }
-    const base64 = btoa(binary);
-    return base64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
-  }
-
-  /**
-   * Logs debug information if debug mode is enabled
-   */
-  private logDebug(message: string, data?: any): void {
-    if (this.config.debug) {
-      console.log(`[WebAuthnService] ${message}`, data);
-    }
   }
 }

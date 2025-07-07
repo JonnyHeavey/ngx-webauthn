@@ -17,8 +17,12 @@ import {
   WebAuthnSupport,
   RegistrationResponse,
   AuthenticationResponse,
-  WebAuthnCreationOptionsJSON,
-  WebAuthnRequestOptionsJSON,
+  RegisterConfig,
+  AuthenticateConfig,
+  PresetName,
+  PASSKEY_PRESET,
+  SECOND_FACTOR_PRESET,
+  DEVICE_BOUND_PRESET,
   WebAuthnError,
   UserCancelledError,
   AuthenticatorError,
@@ -144,17 +148,6 @@ interface StoredCredential {
                       required
                     />
                     <mat-icon matSuffix>badge</mat-icon>
-                  </mat-form-field>
-
-                  <mat-form-field appearance="outline">
-                    <mat-label>Relying Party Name</mat-label>
-                    <input
-                      matInput
-                      [(ngModel)]="registrationForm.rpName"
-                      name="rpName"
-                      required
-                    />
-                    <mat-icon matSuffix>business</mat-icon>
                   </mat-form-field>
                 </form>
 
@@ -587,8 +580,27 @@ export class WebAuthnDemoComponent {
   registrationForm = {
     username: 'demo-user',
     displayName: 'Demo User',
-    rpName: 'WebAuthn Demo',
+    preset: 'passkey' as PresetName,
   };
+
+  // Available presets for the UI
+  presets: { value: PresetName; label: string; description: string }[] = [
+    {
+      value: 'passkey',
+      label: 'Passkey',
+      description: 'Modern passwordless, cross-device credentials',
+    },
+    {
+      value: 'secondFactor',
+      label: 'Second Factor',
+      description: 'Security key as second factor after password',
+    },
+    {
+      value: 'deviceBound',
+      label: 'Device Bound',
+      description: 'High-security, device-bound credentials',
+    },
+  ];
 
   constructor() {
     this.loadSupport();
@@ -637,8 +649,7 @@ export class WebAuthnDemoComponent {
   isRegistrationFormValid(): boolean {
     return !!(
       this.registrationForm.username?.trim() &&
-      this.registrationForm.displayName?.trim() &&
-      this.registrationForm.rpName?.trim()
+      this.registrationForm.displayName?.trim()
     );
   }
 
@@ -653,31 +664,15 @@ export class WebAuthnDemoComponent {
     this.isRegistering.set(true);
     this.lastRegistrationResult.set(null);
 
-    const options: WebAuthnCreationOptionsJSON = {
-      rp: {
-        name: this.registrationForm.rpName,
-      },
-      user: {
-        id: this.generateUserId(),
-        name: this.registrationForm.username,
-        displayName: this.registrationForm.displayName,
-      },
-      challenge: crypto
-        .getRandomValues(new Uint8Array(32))
-        .reduce((acc, byte) => acc + byte.toString(16).padStart(2, '0'), ''),
-      pubKeyCredParams: [
-        { type: 'public-key', alg: -7 }, // ES256
-        { type: 'public-key', alg: -257 }, // RS256
-      ],
-      timeout: 60000,
-      attestation: 'none',
-      authenticatorSelection: {
-        userVerification: 'preferred',
-        residentKey: 'preferred',
-      },
+    const config: RegisterConfig = {
+      username: this.registrationForm.username,
+      displayName: this.registrationForm.displayName,
+      preset: this.registrationForm.preset,
+      // Note: relying party configuration is now handled at the application level
+      // via provideWebAuthn() in app.config.ts for better security
     };
 
-    this.webAuthnService.register(options).subscribe({
+    this.webAuthnService.register(config).subscribe({
       next: (result) => {
         this.lastRegistrationResult.set(result);
         this.saveCredential(result);
@@ -698,23 +693,12 @@ export class WebAuthnDemoComponent {
     this.isAuthenticating.set(true);
     this.lastAuthenticationResult.set(null);
 
-    const options: WebAuthnRequestOptionsJSON = {
-      challenge: crypto
-        .getRandomValues(new Uint8Array(32))
-        .reduce((acc, byte) => acc + byte.toString(16).padStart(2, '0'), ''),
-      timeout: 60000,
-      userVerification: 'preferred',
-      allowCredentials: credentialId
-        ? [
-            {
-              type: 'public-key',
-              id: credentialId,
-            },
-          ]
-        : undefined,
+    const config: AuthenticateConfig = {
+      preset: this.registrationForm.preset, // Use same preset for consistency
+      allowCredentials: credentialId ? [credentialId] : undefined,
     };
 
-    this.webAuthnService.authenticate(options).subscribe({
+    this.webAuthnService.authenticate(config).subscribe({
       next: (result) => {
         this.lastAuthenticationResult.set(result);
         this.snackBar.open('Authentication successful!', 'Close', {

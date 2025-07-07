@@ -14,9 +14,23 @@ export const appConfig: ApplicationConfig = {
     provideZoneChangeDetection({ eventCoalescing: true }),
     provideRouter(appRoutes),
     provideAnimationsAsync(),
-    provideWebAuthn({
-      debug: true,
-      defaultTimeout: 60000,
-    }),
+    provideWebAuthn(
+      {
+        // Required: Human-readable name for your application
+        name: 'WebAuthn Demo',
+        // Required for production: Must match your domain
+        // For development on localhost, use 'localhost'
+        // For production, use your actual domain (e.g., 'example.com' or 'auth.example.com')
+        id: 'localhost',
+      },
+      {
+        // Optional configuration overrides
+        defaultTimeout: 60000, // 60 seconds
+        // You can add more options here:
+        // enforceUserVerification: false,
+        // defaultAttestation: 'none',
+        // defaultAlgorithms: [custom algorithms]
+      }
+    ),
   ],
 };

@@ -23,10 +23,12 @@ The app automatically detects and displays:
 ### 2. Register a Credential
 
 1. Go to the "Registration" tab
-2. Fill in the form (username, display name, relying party name)
+2. Fill in the form (username and display name)
 3. Click "Register Credential"
 4. Follow your browser/device prompts to create the credential
 5. View the registration result with credential details
+
+**Note**: The relying party information is configured at the application level in `app.config.ts` for security reasons.
 
 ### 3. Authenticate
 
@@ -45,6 +47,7 @@ The app automatically detects and displays:
 
 - **Storage**: Credentials are stored in localStorage for demo purposes
 - **Security**: Uses proper WebAuthn challenge generation and validation
+- **Configuration**: Relying party information is configured at application level for security
 - **Error Handling**: Comprehensive error messages for different failure scenarios
 - **Responsive**: Works on desktop and mobile devices
 - **Material Design**: Clean, modern UI using Angular Material

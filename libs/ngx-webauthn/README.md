@@ -16,16 +16,56 @@ A comprehensive Angular library that provides a clean, type-safe abstraction ove
 ## Installation
 
 ```bash
-npm install @ngx-webauthn/core
+npm install ngx-webauthn
 ```
 
 ## Quick Start
 
-### 1. Import the Service
+### 1. Configure the Service
+
+First, configure the WebAuthn service with your relying party information:
+
+```typescript
+// main.ts (standalone app)
+import { bootstrapApplication } from '@angular/platform-browser';
+import { provideWebAuthn } from 'ngx-webauthn';
+import { AppComponent } from './app/app.component';
+
+bootstrapApplication(AppComponent, {
+  providers: [
+    provideWebAuthn(
+      { name: 'My App', id: 'myapp.com' }, // Required relying party config
+      { defaultTimeout: 30000 } // Optional overrides
+    ),
+    // ... other providers
+  ],
+});
+```
+
+```typescript
+// app.module.ts (module-based app)
+import { NgModule } from '@angular/core';
+import { BrowserModule } from '@angular/platform-browser';
+import { WEBAUTHN_CONFIG, createWebAuthnConfig } from 'ngx-webauthn';
+
+@NgModule({
+  imports: [BrowserModule],
+  providers: [
+    {
+      provide: WEBAUTHN_CONFIG,
+      useValue: createWebAuthnConfig({ name: 'My App', id: 'myapp.com' }, { defaultTimeout: 30000 }),
+    },
+  ],
+  // ...
+})
+export class AppModule {}
+```
+
+### 2. Use the Service with Presets
 
 ```typescript
 import { Component, inject } from '@angular/core';
-import { WebAuthnService, WebAuthnError, WebAuthnErrorType } from '@ngx-webauthn/core';
+import { WebAuthnService, WebAuthnError, WebAuthnErrorType } from 'ngx-webauthn';
 
 @Component({
   selector: 'app-auth',
@@ -45,15 +85,8 @@ export class AuthComponent {
   register() {
     this.webAuthnService
       .register({
-        user: {
-          id: 'user-123',
-          name: 'john.doe@example.com',
-          displayName: 'John Doe',
-        },
-        relyingParty: {
-          name: 'My App',
-          id: 'example.com',
-        },
+        username: 'john.doe@example.com',
+        preset: 'passkey', // Easy preset configuration!
       })
       .subscribe({
         next: (result) => {
@@ -62,7 +95,7 @@ export class AuthComponent {
         },
         error: (error: WebAuthnError) => {
           console.error('Registration failed:', error.message);
-          if (error.type === WebAuthnErrorType.NOT_ALLOWED) {
+          if (error.type === WebAuthnErrorType.USER_CANCELLED) {
             // User cancelled or denied permission
           }
         },
@@ -72,6 +105,7 @@ export class AuthComponent {
   authenticate() {
     this.webAuthnService
       .authenticate({
+        preset: 'passkey', // Uses the same preset for consistency
         // Optional: specify allowed credentials
         allowCredentials: ['credential-id-from-registration'],
       })
@@ -92,7 +126,7 @@ export class AuthComponent {
 
 ```typescript
 import { Component, OnInit, inject } from '@angular/core';
-import { WebAuthnService } from '@ngx-webauthn/core';
+import { WebAuthnService } from 'ngx-webauthn';
 
 @Component({
   selector: 'app-support-check',
@@ -121,6 +155,61 @@ export class SupportCheckComponent implements OnInit {
 }
 ```
 
+## Features Overview
+
+### 🎯 **Preset System**
+
+The library includes intelligent presets for common WebAuthn use cases:
+
+- **`passkey`** - Modern passwordless authentication with credential syncing
+- **`secondFactor`** - Traditional 2FA with hardware security keys
+- **`deviceBound`** - High-security single-device authentication
+
+```typescript
+// Simple preset usage
+this.webAuthnService.register({ username: 'user@example.com', preset: 'passkey' });
+
+// Preset with custom overrides
+this.webAuthnService.register({
+  username: 'user@example.com',
+  preset: 'passkey',
+  authenticatorSelection: { userVerification: 'required' },
+});
+```
+
+### 🔧 **Enhanced Configuration**
+
+The new configuration system ensures proper security defaults:
+
+```typescript
+interface WebAuthnConfig {
+  relyingParty: {
+    name: string; // Required: Your app name
+    id?: string; // Optional: Your domain
+  };
+  defaultTimeout?: number; // Default: 60000ms
+  defaultAlgorithms?: PublicKeyCredentialParameters[];
+  enforceUserVerification?: boolean; // Default: false
+  defaultAttestation?: AttestationConveyancePreference;
+  defaultAuthenticatorSelection?: AuthenticatorSelectionCriteria;
+}
+```
+
+### 🔄 **Flexible Input Types**
+
+Supports multiple input formats for maximum flexibility:
+
+```typescript
+// High-level config (recommended)
+service.register({ username: 'user@example.com', preset: 'passkey' });
+
+// Native WebAuthn options
+service.register(nativeCreationOptions);
+
+// JSON WebAuthn options (base64url strings)
+service.register(jsonCreationOptions);
+```
+
 ## API Reference
 
 ### WebAuthnService
@@ -135,32 +224,36 @@ Synchronously checks if WebAuthn is supported in the current browser.
 
 Returns detailed information about WebAuthn support including platform authenticator availability.
 
-##### `register(options: WebAuthnRegistrationOptions): Observable<WebAuthnRegistrationResult>`
+##### `register(input: RegisterInput): Observable<RegistrationResponse>`
 
-Registers a new WebAuthn credential.
+Registers a new WebAuthn credential. Accepts either high-level config objects or direct WebAuthn options.
 
-##### `authenticate(options: WebAuthnAuthenticationOptions): Observable<WebAuthnAuthenticationResult>`
+##### `authenticate(input: AuthenticateInput): Observable<AuthenticationResponse>`
 
-Authenticates using an existing WebAuthn credential.
+Authenticates using an existing WebAuthn credential. Accepts either high-level config objects or direct WebAuthn options.
 
-### Interfaces
+### Response Types
 
-#### WebAuthnRegistrationOptions
+#### RegistrationResponse
 
 ```typescript
-interface WebAuthnRegistrationOptions {
-  user: WebAuthnUser;
-  relyingParty: WebAuthnRelyingParty;
-  challenge?: string; // Auto-generated if not provided
-  timeout?: number; // Default: 60000ms
-  attestation?: AttestationConveyancePreference; // Default: 'none'
-  authenticatorSelection?: {
-    authenticatorAttachment?: AuthenticatorAttachment;
-    userVerification?: UserVerificationRequirement;
-    requireResidentKey?: boolean;
-    residentKey?: ResidentKeyRequirement;
-  };
-  excludeCredentials?: string[]; // Credential IDs to exclude
+interface RegistrationResponse {
+  success: boolean;
+  credentialId: string; // Base64url encoded
+  publicKey?: string; // Base64url encoded (if available)
+  transports?: AuthenticatorTransport[];
+  rawResponse?: WebAuthnRegistrationResult; // For advanced usage
+}
+```
+
+#### AuthenticationResponse
+
+```typescript
+interface AuthenticationResponse {
+  success: boolean;
+  credentialId: string; // Base64url encoded
+  userHandle?: string; // Base64url encoded
+  rawResponse?: WebAuthnAuthenticationResult; // For advanced usage
 }
 ```
 
@@ -173,17 +266,6 @@ interface WebAuthnRegistrationResult {
   attestationObject: string; // Base64url encoded
   clientDataJSON: string; // Base64url encoded
   transports?: AuthenticatorTransport[];
-}
-```
-
-#### WebAuthnAuthenticationOptions
-
-```typescript
-interface WebAuthnAuthenticationOptions {
-  challenge?: string; // Auto-generated if not provided
-  timeout?: number; // Default: 60000ms
-  userVerification?: UserVerificationRequirement; // Default: 'preferred'
-  allowCredentials?: string[]; // Credential IDs to allow
 }
 ```
 
@@ -224,61 +306,63 @@ class WebAuthnError extends Error {
 
 ## Advanced Usage
 
-### Custom Challenge Generation
+### Using Direct WebAuthn Options
 
 ```typescript
-// Generate your own challenge (must be base64url encoded)
-const customChallenge = 'your-base64url-encoded-challenge';
+// Native creation options
+const creationOptions: PublicKeyCredentialCreationOptions = {
+  rp: { name: 'My App' },
+  user: {
+    id: new Uint8Array([1, 2, 3, 4]),
+    name: 'john.doe@example.com',
+    displayName: 'John Doe',
+  },
+  challenge: new Uint8Array([5, 6, 7, 8]),
+  pubKeyCredParams: [{ type: 'public-key', alg: -7 }],
+};
 
-this.webAuthnService
-  .register({
-    user: {
-      /* ... */
-    },
-    relyingParty: {
-      /* ... */
-    },
-    challenge: customChallenge,
-  })
-  .subscribe(/* ... */);
+this.webAuthnService.register(creationOptions).subscribe((result) => {
+  console.log('Registration complete:', result);
+});
 ```
 
-### Authenticator Selection
+### JSON WebAuthn Options
 
 ```typescript
-// Prefer platform authenticators (Face ID, Touch ID, Windows Hello)
+// JSON options also work (base64url strings instead of ArrayBuffers)
+const jsonOptions: PublicKeyCredentialCreationOptionsJSON = {
+  rp: { name: 'My App' },
+  user: {
+    id: 'dXNlcklk',
+    name: 'john.doe@example.com',
+    displayName: 'John Doe',
+  },
+  challenge: 'Y2hhbGxlbmdl',
+  pubKeyCredParams: [{ type: 'public-key', alg: -7 }],
+};
+
+this.webAuthnService.register(jsonOptions).subscribe((result) => {
+  console.log('Registration complete:', result);
+});
+```
+
+### Config with Custom Challenge
+
+```typescript
+// High-level config with custom challenge
 this.webAuthnService
   .register({
-    user: {
-      /* ... */
-    },
-    relyingParty: {
-      /* ... */
-    },
+    username: 'john.doe@example.com',
+    preset: 'passkey',
+    challenge: 'your-base64url-encoded-challenge',
     authenticatorSelection: {
       authenticatorAttachment: 'platform',
       userVerification: 'required',
-      residentKey: 'required',
     },
   })
-  .subscribe(/* ... */);
-```
-
-### Excluding Existing Credentials
-
-```typescript
-// Prevent re-registration of existing credentials
-this.webAuthnService
-  .register({
-    user: {
-      /* ... */
-    },
-    relyingParty: {
-      /* ... */
-    },
-    excludeCredentials: ['existing-credential-id-1', 'existing-credential-id-2'],
-  })
-  .subscribe(/* ... */);
+  .subscribe((result) => {
+    console.log('Passkey registered:', result);
+  });
 ```
 
 ## Server-Side Integration

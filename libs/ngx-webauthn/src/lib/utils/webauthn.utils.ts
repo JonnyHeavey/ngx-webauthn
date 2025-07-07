@@ -1,6 +1,7 @@
 /**
  * WebAuthn Utility Functions
- * Handles ArrayBuffer conversions and other WebAuthn-specific operations
+ * Centralized utilities for ArrayBuffer conversions and WebAuthn-specific operations
+ * This is the single source of truth for data transformation functions
  */
 
 /**
@@ -56,6 +57,7 @@ export function base64urlToArrayBuffer(base64url: string): ArrayBuffer {
 
 /**
  * Converts ArrayBuffer to base64url string
+ * This is the canonical implementation used throughout the library
  */
 export function arrayBufferToBase64url(buffer: ArrayBuffer): string {
   const base64 = arrayBufferToBase64(buffer);
@@ -124,8 +126,8 @@ export async function isPlatformAuthenticatorAvailable(): Promise<boolean> {
 }
 
 /**
- * Gets supported authenticator transports
- * Returns common transports that are widely supported
+ * Gets supported authenticator transports for this platform
+ * Enhanced detection with better browser compatibility
  */
 export function getSupportedTransports(): AuthenticatorTransport[] {
   const transports: AuthenticatorTransport[] = ['usb', 'internal'];
@@ -189,4 +191,33 @@ export function getDefaultPubKeyCredParams(): PublicKeyCredentialParameters[] {
       alg: -257, // RS256
     },
   ];
+}
+
+/**
+ * Enhanced type guard to detect JSON-formatted WebAuthn options
+ * More robust than simple challenge type checking
+ */
+export function isJSONOptions(options: any): boolean {
+  if (!options || typeof options !== 'object') {
+    return false;
+  }
+
+  // Check multiple indicators that this is JSON format (base64url strings)
+  return (
+    typeof options.challenge === 'string' ||
+    (options.user && typeof options.user.id === 'string') ||
+    (options.allowCredentials?.length > 0 &&
+      typeof options.allowCredentials[0]?.id === 'string') ||
+    (options.excludeCredentials?.length > 0 &&
+      typeof options.excludeCredentials[0]?.id === 'string')
+  );
+}
+
+/**
+ * Type guard to check if input is a PublicKeyCredential
+ */
+export function isPublicKeyCredential(
+  credential: Credential | null
+): credential is PublicKeyCredential {
+  return credential !== null && credential.type === 'public-key';
 }
