@@ -14,12 +14,15 @@ import { MatDividerModule } from '@angular/material/divider';
 import { MatExpansionModule } from '@angular/material/expansion';
 import {
   WebAuthnService,
-  WebAuthnRegistrationOptions,
-  WebAuthnAuthenticationOptions,
-  WebAuthnRegistrationResult,
-  WebAuthnAuthenticationResult,
   WebAuthnSupport,
+  RegistrationResponse,
+  AuthenticationResponse,
+  WebAuthnCreationOptionsJSON,
+  WebAuthnRequestOptionsJSON,
   WebAuthnError,
+  UserCancelledError,
+  AuthenticatorError,
+  UnsupportedOperationError,
 } from 'ngx-webauthn';
 
 interface StoredCredential {
@@ -576,8 +579,8 @@ export class WebAuthnDemoComponent {
 
   isRegistering = signal(false);
   isAuthenticating = signal(false);
-  lastRegistrationResult = signal<WebAuthnRegistrationResult | null>(null);
-  lastAuthenticationResult = signal<WebAuthnAuthenticationResult | null>(null);
+  lastRegistrationResult = signal<RegistrationResponse | null>(null);
+  lastAuthenticationResult = signal<AuthenticationResponse | null>(null);
   storedCredentials = signal<StoredCredential[]>([]);
 
   // Form data
@@ -615,13 +618,13 @@ export class WebAuthnDemoComponent {
     }
   }
 
-  private saveCredential(result: WebAuthnRegistrationResult): void {
+  private saveCredential(result: RegistrationResponse): void {
     const credential: StoredCredential = {
       id: result.credentialId,
       name: this.registrationForm.username,
       displayName: this.registrationForm.displayName,
       createdAt: new Date(),
-      transports: result.transports,
+      transports: result.transports?.map(String) || [],
     };
 
     const current = this.storedCredentials();
@@ -650,16 +653,28 @@ export class WebAuthnDemoComponent {
     this.isRegistering.set(true);
     this.lastRegistrationResult.set(null);
 
-    const options: WebAuthnRegistrationOptions = {
+    const options: WebAuthnCreationOptionsJSON = {
+      rp: {
+        name: this.registrationForm.rpName,
+      },
       user: {
         id: this.generateUserId(),
         name: this.registrationForm.username,
         displayName: this.registrationForm.displayName,
       },
-      relyingParty: {
-        name: this.registrationForm.rpName,
-      },
+      challenge: crypto
+        .getRandomValues(new Uint8Array(32))
+        .reduce((acc, byte) => acc + byte.toString(16).padStart(2, '0'), ''),
+      pubKeyCredParams: [
+        { type: 'public-key', alg: -7 }, // ES256
+        { type: 'public-key', alg: -257 }, // RS256
+      ],
       timeout: 60000,
+      attestation: 'none',
+      authenticatorSelection: {
+        userVerification: 'preferred',
+        residentKey: 'preferred',
+      },
     };
 
     this.webAuthnService.register(options).subscribe({
@@ -683,9 +698,20 @@ export class WebAuthnDemoComponent {
     this.isAuthenticating.set(true);
     this.lastAuthenticationResult.set(null);
 
-    const options: WebAuthnAuthenticationOptions = {
+    const options: WebAuthnRequestOptionsJSON = {
+      challenge: crypto
+        .getRandomValues(new Uint8Array(32))
+        .reduce((acc, byte) => acc + byte.toString(16).padStart(2, '0'), ''),
       timeout: 60000,
-      allowCredentials: credentialId ? [credentialId] : undefined,
+      userVerification: 'preferred',
+      allowCredentials: credentialId
+        ? [
+            {
+              type: 'public-key',
+              id: credentialId,
+            },
+          ]
+        : undefined,
     };
 
     this.webAuthnService.authenticate(options).subscribe({
@@ -739,14 +765,23 @@ export class WebAuthnDemoComponent {
     console.error(message, error);
 
     let errorMessage = message;
-    if (error instanceof WebAuthnError) {
+    let duration = 5000;
+
+    if (error instanceof UserCancelledError) {
+      errorMessage = 'Operation was cancelled by the user';
+      duration = 3000;
+    } else if (error instanceof AuthenticatorError) {
+      errorMessage += `: ${error.message}`;
+    } else if (error instanceof UnsupportedOperationError) {
+      errorMessage += `: ${error.message}`;
+    } else if (error instanceof WebAuthnError) {
       errorMessage += `: ${error.message}`;
     } else if (error?.message) {
       errorMessage += `: ${error.message}`;
     }
 
     this.snackBar.open(errorMessage, 'Close', {
-      duration: 5000,
+      duration,
       panelClass: ['error-snackbar'],
     });
   }

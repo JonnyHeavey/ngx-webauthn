@@ -6,6 +6,7 @@ import {
 import { provideRouter } from '@angular/router';
 import { provideAnimationsAsync } from '@angular/platform-browser/animations/async';
 import { appRoutes } from './app.routes';
+import { provideWebAuthn } from 'ngx-webauthn';
 
 export const appConfig: ApplicationConfig = {
   providers: [
@@ -13,5 +14,9 @@ export const appConfig: ApplicationConfig = {
     provideZoneChangeDetection({ eventCoalescing: true }),
     provideRouter(appRoutes),
     provideAnimationsAsync(),
+    provideWebAuthn({
+      debug: true,
+      defaultTimeout: 60000,
+    }),
   ],
 };

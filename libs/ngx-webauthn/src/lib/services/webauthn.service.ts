@@ -1,44 +1,64 @@
-import { Injectable } from '@angular/core';
+/**
+ * Enhanced WebAuthn Service
+ *
+ * Provides a clean, high-level API for WebAuthn operations with:
+ * - Modern inject() pattern instead of constructor DI
+ * - Flexible options (JSON base64url strings OR native ArrayBuffers)
+ * - Enhanced error handling with specific error types
+ * - Native browser parsing functions for optimal performance
+ * - Clean, developer-friendly response objects
+ */
+
+import { Injectable, inject } from '@angular/core';
 import { Observable, from, throwError } from 'rxjs';
 import { map, catchError } from 'rxjs/operators';
 
 import {
-  WebAuthnRegistrationOptions,
-  WebAuthnRegistrationResult,
-  WebAuthnAuthenticationOptions,
-  WebAuthnAuthenticationResult,
   WebAuthnSupport,
-  WebAuthnError,
-  WebAuthnErrorType,
+  RegistrationResponse,
+  AuthenticationResponse,
+  FlexibleRegistrationOptions,
+  FlexibleAuthenticationOptions,
+  WebAuthnRegistrationResult,
+  WebAuthnAuthenticationResult,
 } from '../models/webauthn.models';
 
 import {
-  isWebAuthnSupported,
-  isPlatformAuthenticatorAvailable,
-  getSupportedTransports,
-  generateChallenge,
-  generateUserId,
-  arrayBufferToBase64url,
-  base64urlToArrayBuffer,
-  arrayBufferToCredentialId,
-  credentialIdToArrayBuffer,
-  validateRegistrationOptions,
-  getDefaultPubKeyCredParams,
-} from '../utils/webauthn.utils';
+  WebAuthnError,
+  WebAuthnErrorType,
+  UserCancelledError,
+  AuthenticatorError,
+  InvalidOptionsError,
+  UnsupportedOperationError,
+  SecurityError,
+  TimeoutError,
+} from '../errors/webauthn.errors';
+
+import { WEBAUTHN_CONFIG } from '../config/webauthn.config';
 
 /**
- * Angular service for WebAuthn operations
+ * Enhanced Angular service for WebAuthn operations
  * Provides a clean abstraction over the WebAuthn API with RxJS observables
+ * and enhanced error handling
  */
 @Injectable({
   providedIn: 'root',
 })
 export class WebAuthnService {
+  private readonly config = inject(WEBAUTHN_CONFIG);
+
   /**
    * Checks if WebAuthn is supported in the current browser
    */
   isSupported(): boolean {
-    return isWebAuthnSupported();
+    return !!(
+      typeof window !== 'undefined' &&
+      window.PublicKeyCredential &&
+      typeof navigator !== 'undefined' &&
+      navigator.credentials &&
+      typeof navigator.credentials.create === 'function' &&
+      typeof navigator.credentials.get === 'function'
+    );
   }
 
   /**
@@ -48,18 +68,19 @@ export class WebAuthnService {
     if (!this.isSupported()) {
       return throwError(
         () =>
-          new WebAuthnError(
-            WebAuthnErrorType.NOT_SUPPORTED,
+          new UnsupportedOperationError(
             'WebAuthn is not supported in this browser'
           )
       );
     }
 
-    return from(isPlatformAuthenticatorAvailable()).pipe(
+    return from(
+      PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable()
+    ).pipe(
       map((isPlatformAvailable) => ({
         isSupported: true,
         isPlatformAuthenticatorAvailable: isPlatformAvailable,
-        supportedTransports: getSupportedTransports(),
+        supportedTransports: this.getSupportedTransports(),
       })),
       catchError((error) =>
         throwError(
@@ -75,27 +96,53 @@ export class WebAuthnService {
   }
 
   /**
-   * Registers a new WebAuthn credential
+   * Registers a new WebAuthn credential with flexible options support
+   *
+   * @param options Either JSON-serializable options (with base64url strings) or native options (with ArrayBuffers)
+   * @returns Observable of RegistrationResponse with clean, developer-friendly format
+   *
+   * @example
+   * ```typescript
+   * // JSON options (easy for developers)
+   * const jsonOptions = {
+   *   challenge: "Y2hhbGxlbmdl", // base64url string
+   *   rp: { name: "My App" },
+   *   user: { id: "dXNlcklk", name: "user@example.com", displayName: "User" },
+   *   pubKeyCredParams: [{ type: "public-key", alg: -7 }]
+   * };
+   *
+   * // Native options (for advanced users)
+   * const nativeOptions = {
+   *   challenge: new Uint8Array([...]),
+   *   rp: { name: "My App" },
+   *   user: { id: new Uint8Array([...]), name: "user@example.com", displayName: "User" },
+   *   pubKeyCredParams: [{ type: "public-key", alg: -7 }]
+   * };
+   *
+   * this.webAuthnService.register(jsonOptions).subscribe({
+   *   next: (response) => console.log('Success!', response),
+   *   error: (error) => console.error('Error:', error)
+   * });
+   * ```
    */
   register(
-    options: WebAuthnRegistrationOptions
-  ): Observable<WebAuthnRegistrationResult> {
+    options: FlexibleRegistrationOptions
+  ): Observable<RegistrationResponse> {
     if (!this.isSupported()) {
       return throwError(
         () =>
-          new WebAuthnError(
-            WebAuthnErrorType.NOT_SUPPORTED,
+          new UnsupportedOperationError(
             'WebAuthn is not supported in this browser'
           )
       );
     }
 
     try {
-      const publicKeyOptions = this.buildRegistrationOptions(options);
-      validateRegistrationOptions(publicKeyOptions);
+      const parsedOptions = this.parseRegistrationOptions(options);
+      this.logDebug('Parsed registration options:', parsedOptions);
 
       return from(
-        navigator.credentials.create({ publicKey: publicKeyOptions })
+        navigator.credentials.create({ publicKey: parsedOptions })
       ).pipe(
         map((credential) => this.processRegistrationResult(credential)),
         catchError((error) => this.handleWebAuthnError(error))
@@ -103,9 +150,8 @@ export class WebAuthnService {
     } catch (error) {
       return throwError(
         () =>
-          new WebAuthnError(
-            WebAuthnErrorType.UNKNOWN,
-            'Failed to prepare registration options',
+          new InvalidOptionsError(
+            'Failed to parse registration options',
             error as Error
           )
       );
@@ -113,36 +159,53 @@ export class WebAuthnService {
   }
 
   /**
-   * Authenticates using an existing WebAuthn credential
+   * Authenticates using an existing WebAuthn credential with flexible options support
+   *
+   * @param options Either JSON-serializable options (with base64url strings) or native options (with ArrayBuffers)
+   * @returns Observable of AuthenticationResponse with clean, developer-friendly format
+   *
+   * @example
+   * ```typescript
+   * // JSON options (easy for developers)
+   * const jsonOptions = {
+   *   challenge: "Y2hhbGxlbmdl", // base64url string
+   *   allowCredentials: [{
+   *     type: "public-key",
+   *     id: "Y3JlZElk" // base64url string
+   *   }]
+   * };
+   *
+   * this.webAuthnService.authenticate(jsonOptions).subscribe({
+   *   next: (response) => console.log('Authenticated!', response),
+   *   error: (error) => console.error('Error:', error)
+   * });
+   * ```
    */
   authenticate(
-    options: WebAuthnAuthenticationOptions
-  ): Observable<WebAuthnAuthenticationResult> {
+    options: FlexibleAuthenticationOptions
+  ): Observable<AuthenticationResponse> {
     if (!this.isSupported()) {
       return throwError(
         () =>
-          new WebAuthnError(
-            WebAuthnErrorType.NOT_SUPPORTED,
+          new UnsupportedOperationError(
             'WebAuthn is not supported in this browser'
           )
       );
     }
 
     try {
-      const publicKeyOptions = this.buildAuthenticationOptions(options);
+      const parsedOptions = this.parseAuthenticationOptions(options);
+      this.logDebug('Parsed authentication options:', parsedOptions);
 
-      return from(
-        navigator.credentials.get({ publicKey: publicKeyOptions })
-      ).pipe(
+      return from(navigator.credentials.get({ publicKey: parsedOptions })).pipe(
         map((credential) => this.processAuthenticationResult(credential)),
         catchError((error) => this.handleWebAuthnError(error))
       );
     } catch (error) {
       return throwError(
         () =>
-          new WebAuthnError(
-            WebAuthnErrorType.UNKNOWN,
-            'Failed to prepare authentication options',
+          new InvalidOptionsError(
+            'Failed to parse authentication options',
             error as Error
           )
       );
@@ -150,183 +213,254 @@ export class WebAuthnService {
   }
 
   /**
-   * Builds PublicKeyCredentialCreationOptions from our simplified options
+   * Parses registration options, handling both JSON and native formats
    */
-  private buildRegistrationOptions(
-    options: WebAuthnRegistrationOptions
+  private parseRegistrationOptions(
+    options: FlexibleRegistrationOptions
   ): PublicKeyCredentialCreationOptions {
-    const challenge = options.challenge
-      ? base64urlToArrayBuffer(options.challenge)
-      : generateChallenge();
-
-    const userId = base64urlToArrayBuffer(options.user.id) || generateUserId();
-
-    const excludeCredentials: PublicKeyCredentialDescriptor[] =
-      options.excludeCredentials?.map((credId) => ({
-        type: 'public-key',
-        id: credentialIdToArrayBuffer(credId),
-        transports: getSupportedTransports(),
-      })) || [];
-
-    return {
-      challenge,
-      rp: {
-        name: options.relyingParty.name,
-        id: options.relyingParty.id,
-      },
-      user: {
-        id: userId,
-        name: options.user.name,
-        displayName: options.user.displayName,
-      },
-      pubKeyCredParams: getDefaultPubKeyCredParams(),
-      timeout: options.timeout || 60000,
-      attestation: options.attestation || 'none',
-      authenticatorSelection: options.authenticatorSelection || {
-        userVerification: 'preferred',
-        residentKey: 'preferred',
-      },
-      excludeCredentials,
-    };
+    if (this.isJSONOptions(options)) {
+      // Use native browser function for JSON options
+      return PublicKeyCredential.parseCreationOptionsFromJSON(
+        options as PublicKeyCredentialCreationOptionsJSON
+      );
+    } else {
+      // Options are already in native format
+      return options as PublicKeyCredentialCreationOptions;
+    }
   }
 
   /**
-   * Builds PublicKeyCredentialRequestOptions from our simplified options
+   * Parses authentication options, handling both JSON and native formats
    */
-  private buildAuthenticationOptions(
-    options: WebAuthnAuthenticationOptions
+  private parseAuthenticationOptions(
+    options: FlexibleAuthenticationOptions
   ): PublicKeyCredentialRequestOptions {
-    const challenge = options.challenge
-      ? base64urlToArrayBuffer(options.challenge)
-      : generateChallenge();
-
-    const allowCredentials: PublicKeyCredentialDescriptor[] =
-      options.allowCredentials?.map((credId) => ({
-        type: 'public-key',
-        id: credentialIdToArrayBuffer(credId),
-        transports: getSupportedTransports(),
-      })) || [];
-
-    return {
-      challenge,
-      timeout: options.timeout || 60000,
-      userVerification: options.userVerification || 'preferred',
-      allowCredentials:
-        allowCredentials.length > 0 ? allowCredentials : undefined,
-    };
+    if (this.isJSONOptions(options)) {
+      // Use native browser function for JSON options
+      return PublicKeyCredential.parseRequestOptionsFromJSON(
+        options as PublicKeyCredentialRequestOptionsJSON
+      );
+    } else {
+      // Options are already in native format
+      return options as PublicKeyCredentialRequestOptions;
+    }
   }
 
   /**
-   * Processes the registration result from the WebAuthn API
+   * Detects if options are JSON-like (base64url strings) or native (ArrayBuffers)
+   */
+  private isJSONOptions(options: any): boolean {
+    // Simple heuristic: JSON options have string challenges, native options have ArrayBuffer challenges
+    return typeof options.challenge === 'string';
+  }
+
+  /**
+   * Processes the raw credential result into a clean RegistrationResponse
    */
   private processRegistrationResult(
     credential: Credential | null
-  ): WebAuthnRegistrationResult {
+  ): RegistrationResponse {
     if (!credential || !this.isPublicKeyCredential(credential)) {
-      throw new WebAuthnError(
-        WebAuthnErrorType.INVALID_STATE,
-        'Invalid credential received from registration'
+      throw new AuthenticatorError('No credential returned from authenticator');
+    }
+
+    const response = credential.response as AuthenticatorAttestationResponse;
+
+    // Extract data using the response methods
+    const credentialId = this.arrayBufferToBase64url(credential.rawId);
+    const transports = (response.getTransports?.() ||
+      []) as AuthenticatorTransport[];
+
+    let publicKey: string | undefined;
+    try {
+      const publicKeyBuffer = response.getPublicKey?.();
+      if (publicKeyBuffer) {
+        publicKey = this.arrayBufferToBase64url(publicKeyBuffer);
+      }
+    } catch {
+      // Public key extraction failed - this is okay, not all algorithms are supported
+      this.logDebug(
+        'Public key extraction failed - algorithm may not be supported by user agent'
       );
     }
 
-    const response = (credential as PublicKeyCredential)
-      .response as AuthenticatorAttestationResponse;
-
-    if (!response.attestationObject || !response.clientDataJSON) {
-      throw new WebAuthnError(
-        WebAuthnErrorType.INVALID_STATE,
-        'Missing required data in registration response'
-      );
-    }
-
-    const transports =
-      (response.getTransports?.() as AuthenticatorTransport[]) || [];
+    // Create the raw response for backward compatibility
+    const rawResponse: WebAuthnRegistrationResult = {
+      credentialId,
+      publicKey:
+        publicKey ||
+        this.arrayBufferToBase64url(
+          response.getPublicKey?.() || new ArrayBuffer(0)
+        ),
+      attestationObject: this.arrayBufferToBase64url(
+        response.attestationObject
+      ),
+      clientDataJSON: this.arrayBufferToBase64url(response.clientDataJSON),
+      transports: transports,
+    };
 
     return {
-      credentialId: arrayBufferToCredentialId(
-        (credential as PublicKeyCredential).rawId
-      ),
-      publicKey: arrayBufferToBase64url(
-        response.getPublicKey() || new ArrayBuffer(0)
-      ),
-      attestationObject: arrayBufferToBase64url(response.attestationObject),
-      clientDataJSON: arrayBufferToBase64url(response.clientDataJSON),
+      success: true,
+      credentialId,
+      publicKey,
       transports,
+      rawResponse,
     };
   }
 
   /**
-   * Processes the authentication result from the WebAuthn API
+   * Processes the raw credential result into a clean AuthenticationResponse
    */
   private processAuthenticationResult(
     credential: Credential | null
-  ): WebAuthnAuthenticationResult {
+  ): AuthenticationResponse {
     if (!credential || !this.isPublicKeyCredential(credential)) {
-      throw new WebAuthnError(
-        WebAuthnErrorType.INVALID_STATE,
-        'Invalid credential received from authentication'
-      );
+      throw new AuthenticatorError('No credential returned from authenticator');
     }
 
-    const response = (credential as PublicKeyCredential)
-      .response as AuthenticatorAssertionResponse;
+    const response = credential.response as AuthenticatorAssertionResponse;
+    const credentialId = this.arrayBufferToBase64url(credential.rawId);
 
-    if (
-      !response.authenticatorData ||
-      !response.clientDataJSON ||
-      !response.signature
-    ) {
-      throw new WebAuthnError(
-        WebAuthnErrorType.INVALID_STATE,
-        'Missing required data in authentication response'
-      );
+    let userHandle: string | undefined;
+    if (response.userHandle) {
+      userHandle = this.arrayBufferToBase64url(response.userHandle);
     }
+
+    // Create the raw response for backward compatibility
+    const rawResponse: WebAuthnAuthenticationResult = {
+      credentialId,
+      authenticatorData: this.arrayBufferToBase64url(
+        response.authenticatorData
+      ),
+      clientDataJSON: this.arrayBufferToBase64url(response.clientDataJSON),
+      signature: this.arrayBufferToBase64url(response.signature),
+      userHandle,
+    };
 
     return {
-      credentialId: arrayBufferToCredentialId(
-        (credential as PublicKeyCredential).rawId
-      ),
-      authenticatorData: arrayBufferToBase64url(response.authenticatorData),
-      clientDataJSON: arrayBufferToBase64url(response.clientDataJSON),
-      signature: arrayBufferToBase64url(response.signature),
-      userHandle: response.userHandle
-        ? arrayBufferToBase64url(response.userHandle)
-        : undefined,
+      success: true,
+      credentialId,
+      userHandle,
+      rawResponse,
     };
   }
 
   /**
-   * Checks if a credential is a PublicKeyCredential (or mock equivalent)
+   * Type guard to check if credential is a PublicKeyCredential
    */
   private isPublicKeyCredential(
-    credential: any
+    credential: Credential
   ): credential is PublicKeyCredential {
-    return (
-      credential &&
-      typeof credential.rawId !== 'undefined' &&
-      typeof credential.response !== 'undefined'
-    );
+    return credential.type === 'public-key';
   }
 
   /**
-   * Handles WebAuthn errors and converts them to our custom error types
+   * Enhanced error handling that maps DOMExceptions to specific error types
    */
   private handleWebAuthnError(error: any): Observable<never> {
+    this.logDebug('WebAuthn error occurred:', error);
+
+    // Handle DOMExceptions from WebAuthn API
     if (error instanceof DOMException) {
-      return throwError(() => WebAuthnError.fromDOMException(error));
+      switch (error.name) {
+        case 'NotAllowedError':
+          return throwError(() => new UserCancelledError(error));
+        case 'InvalidStateError':
+          return throwError(
+            () => new AuthenticatorError('Invalid authenticator state', error)
+          );
+        case 'NotSupportedError':
+          return throwError(
+            () =>
+              new UnsupportedOperationError('Operation not supported', error)
+          );
+        case 'SecurityError':
+          return throwError(
+            () => new SecurityError('Security error occurred', error)
+          );
+        case 'TimeoutError':
+          return throwError(
+            () => new TimeoutError('Operation timed out', error)
+          );
+        case 'EncodingError':
+          return throwError(
+            () => new InvalidOptionsError('Encoding error in options', error)
+          );
+        default:
+          return throwError(
+            () =>
+              new WebAuthnError(
+                WebAuthnErrorType.UNKNOWN,
+                `Unknown WebAuthn error: ${error.message}`,
+                error
+              )
+          );
+      }
     }
 
-    if (error instanceof WebAuthnError) {
-      return throwError(() => error);
+    // Handle JSON parsing errors
+    if (
+      error instanceof TypeError &&
+      (error.message.includes('parseCreationOptionsFromJSON') ||
+        error.message.includes('parseRequestOptionsFromJSON'))
+    ) {
+      return throwError(
+        () => new InvalidOptionsError('Invalid JSON options format', error)
+      );
     }
 
+    // Handle other errors
     return throwError(
       () =>
         new WebAuthnError(
           WebAuthnErrorType.UNKNOWN,
-          error?.message || 'Unknown WebAuthn error occurred',
+          `Unexpected error: ${error.message}`,
           error
         )
     );
+  }
+
+  /**
+   * Gets supported authenticator transports for this platform
+   */
+  private getSupportedTransports(): AuthenticatorTransport[] {
+    const transports: AuthenticatorTransport[] = ['usb', 'internal'];
+
+    // Add NFC support for Android devices
+    if (
+      typeof navigator !== 'undefined' &&
+      /Android/i.test(navigator.userAgent)
+    ) {
+      transports.push('nfc');
+    }
+
+    // Add BLE support for modern browsers with Web Bluetooth API
+    if (typeof navigator !== 'undefined' && (navigator as any).bluetooth) {
+      transports.push('ble');
+    }
+
+    return transports;
+  }
+
+  /**
+   * Converts ArrayBuffer to base64url string
+   */
+  private arrayBufferToBase64url(buffer: ArrayBuffer): string {
+    const bytes = new Uint8Array(buffer);
+    let binary = '';
+    for (let i = 0; i < bytes.byteLength; i++) {
+      binary += String.fromCharCode(bytes[i]);
+    }
+    const base64 = btoa(binary);
+    return base64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
+  }
+
+  /**
+   * Logs debug information if debug mode is enabled
+   */
+  private logDebug(message: string, data?: any): void {
+    if (this.config.debug) {
+      console.log(`[WebAuthnService] ${message}`, data);
+    }
   }
 }

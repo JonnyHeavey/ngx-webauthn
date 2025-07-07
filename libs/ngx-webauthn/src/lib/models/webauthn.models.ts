@@ -83,6 +83,7 @@ export interface WebAuthnSupport {
 
 /**
  * Custom WebAuthn error types
+ * @deprecated Use the enhanced error types from webauthn.errors.ts
  */
 export enum WebAuthnErrorType {
   NOT_SUPPORTED = 'NOT_SUPPORTED',
@@ -99,6 +100,7 @@ export enum WebAuthnErrorType {
 
 /**
  * WebAuthn error class with additional context
+ * @deprecated Use the enhanced error classes from webauthn.errors.ts
  */
 export class WebAuthnError extends Error {
   constructor(
@@ -141,12 +143,108 @@ export class WebAuthnError extends Error {
   }
 }
 
+// =============================================================================
+// Enhanced Response Types for New High-Level API
+// =============================================================================
+
+/**
+ * Enhanced registration response with clean, developer-friendly format
+ * Used by the new high-level register() method
+ */
+export interface RegistrationResponse {
+  /**
+   * Whether the registration was successful
+   */
+  success: boolean;
+
+  /**
+   * The credential ID as a base64url string
+   */
+  credentialId: string;
+
+  /**
+   * The public key as a base64url string (if available)
+   * May be undefined if the algorithm is not supported by the user agent
+   */
+  publicKey?: string;
+
+  /**
+   * Available transport methods for this credential
+   */
+  transports?: AuthenticatorTransport[];
+
+  /**
+   * Raw WebAuthn response for advanced users who need access to all data
+   * This preserves backward compatibility and provides access to attestation objects, etc.
+   */
+  rawResponse?: WebAuthnRegistrationResult;
+}
+
+/**
+ * Enhanced authentication response with clean, developer-friendly format
+ * Used by the new high-level authenticate() method
+ */
+export interface AuthenticationResponse {
+  /**
+   * Whether the authentication was successful
+   */
+  success: boolean;
+
+  /**
+   * The credential ID that was used for authentication
+   */
+  credentialId: string;
+
+  /**
+   * The user handle associated with this credential (if available)
+   * This is useful for identifying the user in discoverable credential scenarios
+   */
+  userHandle?: string;
+
+  /**
+   * Raw WebAuthn response for advanced users who need access to all data
+   * This preserves backward compatibility and provides access to signatures, etc.
+   */
+  rawResponse?: WebAuthnAuthenticationResult;
+}
+
+/**
+ * Type alias for JSON-serializable creation options
+ * These are the types that accept base64url strings instead of ArrayBuffers
+ */
+export type WebAuthnCreationOptionsJSON =
+  PublicKeyCredentialCreationOptionsJSON;
+
+/**
+ * Type alias for JSON-serializable request options
+ * These are the types that accept base64url strings instead of ArrayBuffers
+ */
+export type WebAuthnRequestOptionsJSON = PublicKeyCredentialRequestOptionsJSON;
+
+/**
+ * Union type for flexible registration options
+ * Allows developers to use either JSON (base64url strings) or native (ArrayBuffers) formats
+ */
+export type FlexibleRegistrationOptions =
+  | WebAuthnCreationOptionsJSON
+  | PublicKeyCredentialCreationOptions;
+
+/**
+ * Union type for flexible authentication options
+ * Allows developers to use either JSON (base64url strings) or native (ArrayBuffers) formats
+ */
+export type FlexibleAuthenticationOptions =
+  | WebAuthnRequestOptionsJSON
+  | PublicKeyCredentialRequestOptions;
+
 /**
  * Note: Native WebAuthn types are available globally via DOM types:
  * - PublicKeyCredentialUserEntity
  * - PublicKeyCredentialRpEntity
  * - PublicKeyCredentialCreationOptions
  * - PublicKeyCredentialRequestOptions
+ * - PublicKeyCredentialCreationOptionsJSON
+ * - PublicKeyCredentialRequestOptionsJSON
  * - AuthenticatorSelectionCriteria
  * - AttestationConveyancePreference
  * - UserVerificationRequirement
