@@ -1,3 +1,4 @@
+[![Deploy Demo to GitHub Pages](https://github.com/YOUR_USERNAME_OR_ORG/YOUR_REPO_NAME/actions/workflows/deploy-gh-pages.yml/badge.svg)](https://github.com/YOUR_USERNAME_OR_ORG/YOUR_REPO_NAME/actions/workflows/deploy-gh-pages.yml)
 # NgxWebauthn
 
 A powerful Angular library for WebAuthn (Web Authentication API) integration that makes implementing passwordless authentication simple and flexible. Features a preset system for common scenarios while retaining full control for advanced use cases.
@@ -332,3 +333,8 @@ MIT License - see LICENSE file for details.
 - [Passkey Guidelines](https://passkeys.dev/)
 - [Angular Documentation](https://angular.io/)
 - [Nx Documentation](https://nx.dev/)
+
+## Live Demo
+
+The demo application is automatically deployed to GitHub Pages. You can access it here:
+[https://YOUR_USERNAME_OR_ORG.github.io/YOUR_REPO_NAME/](https://YOUR_USERNAME_OR_ORG.github.io/YOUR_REPO_NAME/)
