@@ -473,7 +473,7 @@ interface RegistrationResponse {
   credentialId: string; // Base64url encoded
   publicKey?: string; // Base64url encoded (if available)
   transports?: AuthenticatorTransport[];
-  rawResponse?: WebAuthnRegistrationResult; // For advanced usage
+  rawResponse?: WebAuthnRegistrationResult; // Complete WebAuthn data for advanced usage
 }
 ```
 
@@ -484,7 +484,7 @@ interface AuthenticationResponse {
   success: boolean;
   credentialId: string; // Base64url encoded
   userHandle?: string; // Base64url encoded
-  rawResponse?: WebAuthnAuthenticationResult; // For advanced usage
+  rawResponse?: WebAuthnAuthenticationResult; // Complete WebAuthn data for advanced usage
 }
 ```
 

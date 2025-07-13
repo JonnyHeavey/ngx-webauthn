@@ -287,11 +287,9 @@ export class WebAuthnService {
         | PublicKeyCredentialRequestOptionsJSON;
 
       if (isAuthenticateConfig(input)) {
-        // High-level config path: validate, resolve preset, build options
         validateAuthenticateConfig(input);
         requestOptions = buildRequestOptionsFromConfig(input, this.config);
       } else {
-        // Direct options path: use provided options
         requestOptions = input;
       }
 
@@ -326,12 +324,10 @@ export class WebAuthnService {
       | PublicKeyCredentialCreationOptionsJSON
   ): PublicKeyCredentialCreationOptions {
     if (isJSONOptions(options)) {
-      // Use native browser function for JSON options
       return PublicKeyCredential.parseCreationOptionsFromJSON(
         options as PublicKeyCredentialCreationOptionsJSON
       );
     } else {
-      // Options are already in native format
       return options as PublicKeyCredentialCreationOptions;
     }
   }
@@ -350,12 +346,10 @@ export class WebAuthnService {
       | PublicKeyCredentialRequestOptionsJSON
   ): PublicKeyCredentialRequestOptions {
     if (isJSONOptions(options)) {
-      // Use native browser function for JSON options
       return PublicKeyCredential.parseRequestOptionsFromJSON(
         options as PublicKeyCredentialRequestOptionsJSON
       );
     } else {
-      // Options are already in native format
       return options as PublicKeyCredentialRequestOptions;
     }
   }
@@ -421,13 +415,13 @@ export class WebAuthnService {
   }
 
   /**
-   * Creates the raw WebAuthn response for backward compatibility.
-   * Handles the fallback logic for missing public key data.
+   * Creates the complete raw WebAuthn response for advanced use cases.
+   * Provides access to all WebAuthn data including attestation objects and metadata.
    *
    * @param credential Validated PublicKeyCredential
    * @param credentialId Already extracted credential ID
    * @param publicKey Extracted public key (may be undefined)
-   * @returns Complete WebAuthnRegistrationResult
+   * @returns Complete WebAuthnRegistrationResult with all WebAuthn data
    * @private
    */
   private createRawRegistrationResponse(
@@ -486,25 +480,17 @@ export class WebAuthnService {
   private processRegistrationResult(
     credential: Credential | null
   ): RegistrationResponse {
-    // 1. Validate input
     const validCredential = this.validateRegistrationCredential(credential);
-
-    // 2. Extract basic information
     const credentialInfo = this.extractCredentialInfo(validCredential);
-
-    // 3. Handle complex public key extraction
     const response =
       validCredential.response as AuthenticatorAttestationResponse;
     const publicKey = this.extractPublicKey(response);
-
-    // 4. Create backward-compatible raw response
     const rawResponse = this.createRawRegistrationResponse(
       validCredential,
       credentialInfo.credentialId,
       publicKey
     );
 
-    // 5. Assemble final response
     return this.assembleRegistrationResponse(
       credentialInfo,
       publicKey,
@@ -536,7 +522,7 @@ export class WebAuthnService {
       userHandle = arrayBufferToBase64url(response.userHandle);
     }
 
-    // Create the raw response for backward compatibility
+    // Create the complete raw response for advanced use cases
     const rawResponse: WebAuthnAuthenticationResult = {
       credentialId,
       authenticatorData: arrayBufferToBase64url(response.authenticatorData),

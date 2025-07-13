@@ -56,8 +56,8 @@ export interface RegistrationResponse {
   transports?: AuthenticatorTransport[];
 
   /**
-   * Raw WebAuthn response for advanced users who need access to all data
-   * This preserves backward compatibility and provides access to attestation objects, etc.
+   * Complete raw WebAuthn response for advanced use cases
+   * Provides access to all WebAuthn data including attestation objects, metadata, etc.
    */
   rawResponse?: WebAuthnRegistrationResult;
 }
@@ -84,8 +84,8 @@ export interface AuthenticationResponse {
   userHandle?: string;
 
   /**
-   * Raw WebAuthn response for advanced users who need access to all data
-   * This preserves backward compatibility and provides access to signatures, etc.
+   * Complete raw WebAuthn response for advanced use cases
+   * Provides access to all WebAuthn data including signatures, authenticator data, etc.
    */
   rawResponse?: WebAuthnAuthenticationResult;
 }
