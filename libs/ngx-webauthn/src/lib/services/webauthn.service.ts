@@ -387,59 +387,73 @@ export class WebAuthnService {
   }
 
   /**
-   * Enhanced error handling that maps DOMExceptions to specific error types
+   * Enhanced error handling that maps errors to specific error types
+   * REFACTORED: Now delegates to specialized error handlers for better maintainability
    */
   private handleWebAuthnError(error: any): Observable<never> {
-    // Handle DOMExceptions from WebAuthn API
     if (error instanceof DOMException) {
-      switch (error.name) {
-        case 'NotAllowedError':
-          return throwError(() => new UserCancelledError(error));
-        case 'InvalidStateError':
-          return throwError(
-            () => new AuthenticatorError('Invalid authenticator state', error)
-          );
-        case 'NotSupportedError':
-          return throwError(
-            () =>
-              new UnsupportedOperationError('Operation not supported', error)
-          );
-        case 'SecurityError':
-          return throwError(
-            () => new SecurityError('Security error occurred', error)
-          );
-        case 'TimeoutError':
-          return throwError(
-            () => new TimeoutError('Operation timed out', error)
-          );
-        case 'EncodingError':
-          return throwError(
-            () => new InvalidOptionsError('Encoding error in options', error)
-          );
-        default:
-          return throwError(
-            () =>
-              new WebAuthnError(
-                WebAuthnErrorType.UNKNOWN,
-                `Unknown WebAuthn error: ${error.message}`,
-                error
-              )
-          );
-      }
+      return this.handleDOMException(error);
     }
 
-    // Handle JSON parsing errors
-    if (
+    if (this.isJSONParsingError(error)) {
+      return this.handleJSONParsingError(error);
+    }
+
+    return this.handleUnknownError(error);
+  }
+
+  /**
+   * Handles DOMExceptions from WebAuthn API using a mapping approach
+   */
+  private handleDOMException(error: DOMException): Observable<never> {
+    const errorMap: Record<string, () => WebAuthnError> = {
+      NotAllowedError: () => new UserCancelledError(error),
+      InvalidStateError: () =>
+        new AuthenticatorError('Invalid authenticator state', error),
+      NotSupportedError: () =>
+        new UnsupportedOperationError('Operation not supported', error),
+      SecurityError: () => new SecurityError('Security error occurred', error),
+      TimeoutError: () => new TimeoutError('Operation timed out', error),
+      EncodingError: () =>
+        new InvalidOptionsError('Encoding error in options', error),
+    };
+
+    const errorFactory = errorMap[error.name];
+    const webAuthnError = errorFactory
+      ? errorFactory()
+      : new WebAuthnError(
+          WebAuthnErrorType.UNKNOWN,
+          `Unknown WebAuthn error: ${error.message}`,
+          error
+        );
+
+    return throwError(() => webAuthnError);
+  }
+
+  /**
+   * Checks if an error is related to JSON parsing issues
+   */
+  private isJSONParsingError(error: any): boolean {
+    return (
       error instanceof TypeError &&
       (error.message.includes('parseCreationOptionsFromJSON') ||
         error.message.includes('parseRequestOptionsFromJSON'))
-    ) {
-      return throwError(
-        () => new InvalidOptionsError('Invalid JSON options format', error)
-      );
-    }
+    );
+  }
 
-    // Handle other errors
+  /**
+   * Handles JSON parsing errors specifically
+   */
+  private handleJSONParsingError(error: TypeError): Observable<never> {
+    return throwError(
+      () => new InvalidOptionsError('Invalid JSON options format', error)
+    );
+  }
+
+  /**
+   * Handles any unexpected errors that don't fall into other categories
+   */
+  private handleUnknownError(error: any): Observable<never> {
     return throwError(
       () =>
         new WebAuthnError(

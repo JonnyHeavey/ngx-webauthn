@@ -140,67 +140,92 @@ export function resolvePreset(presetName: PresetName) {
 }
 
 /**
- * Build complete PublicKeyCredentialCreationOptions from RegisterConfig
- * Now uses WebAuthnConfig for better defaults and relying party information
+ * Creates base options from WebAuthn service configuration
  */
-export function buildCreationOptionsFromConfig(
-  config: RegisterConfig,
+function createBaseCreationOptions(
   webAuthnConfig: WebAuthnConfig
-): PublicKeyCredentialCreationOptions {
-  // Start with base configuration from WebAuthnConfig
-  let options: Partial<PublicKeyCredentialCreationOptions> = {
+): Partial<PublicKeyCredentialCreationOptions> {
+  return {
     timeout: webAuthnConfig.defaultTimeout || 60000,
     attestation: webAuthnConfig.defaultAttestation || 'none',
   };
+}
 
-  // Apply preset if specified
+/**
+ * Applies preset configuration to base options
+ */
+function applyPresetConfiguration(
+  config: RegisterConfig,
+  baseOptions: Partial<PublicKeyCredentialCreationOptions>,
+  webAuthnConfig: WebAuthnConfig
+): Partial<PublicKeyCredentialCreationOptions> {
   if (config.preset) {
     const preset = resolvePreset(config.preset);
-    options = deepMerge(options, {
+    return deepMerge(baseOptions, {
       authenticatorSelection: preset.authenticatorSelection,
       pubKeyCredParams: [...preset.pubKeyCredParams], // Convert readonly to mutable
     });
-  } else {
-    // Apply default authenticator selection from config
-    if (webAuthnConfig.defaultAuthenticatorSelection) {
-      options.authenticatorSelection =
-        webAuthnConfig.defaultAuthenticatorSelection;
-    }
   }
 
-  // Apply user overrides
+  // Apply default authenticator selection from config when no preset
+  if (webAuthnConfig.defaultAuthenticatorSelection) {
+    return {
+      ...baseOptions,
+      authenticatorSelection: webAuthnConfig.defaultAuthenticatorSelection,
+    };
+  }
+
+  return baseOptions;
+}
+
+/**
+ * Applies user-specified overrides to options
+ */
+function applyUserOverrides(
+  config: RegisterConfig,
+  options: Partial<PublicKeyCredentialCreationOptions>
+): Partial<PublicKeyCredentialCreationOptions> {
+  const result = { ...options };
+
   if (config.timeout !== undefined) {
-    options.timeout = config.timeout;
+    result.timeout = config.timeout;
   }
 
   if (config.attestation !== undefined) {
-    options.attestation = config.attestation;
+    result.attestation = config.attestation;
   }
 
   if (config.authenticatorSelection !== undefined) {
-    options.authenticatorSelection = deepMerge(
-      options.authenticatorSelection || {},
+    result.authenticatorSelection = deepMerge(
+      result.authenticatorSelection || {},
       config.authenticatorSelection
     );
   }
 
   if (config.pubKeyCredParams !== undefined) {
-    options.pubKeyCredParams = config.pubKeyCredParams;
+    result.pubKeyCredParams = config.pubKeyCredParams;
   }
 
   if (config.extensions !== undefined) {
-    options.extensions = config.extensions;
+    result.extensions = config.extensions;
   }
 
-  // Handle required fields
+  return result;
+}
+
+/**
+ * Builds the final PublicKeyCredentialCreationOptions with all required fields
+ */
+function assembleFinalCreationOptions(
+  options: Partial<PublicKeyCredentialCreationOptions>,
+  config: RegisterConfig,
+  webAuthnConfig: WebAuthnConfig
+): PublicKeyCredentialCreationOptions {
   const challenge = processChallenge(config.challenge);
   const userId = processUserId(config.userId, config.username);
-
-  // Use relying party from config, with user override capability
   const relyingParty = config.rp || webAuthnConfig.relyingParty;
 
-  // Build final options
-  const finalOptions: PublicKeyCredentialCreationOptions = {
+  return {
     ...options,
     rp: relyingParty,
     user: {
@@ -216,8 +241,24 @@ export function buildCreationOptionsFromConfig(
       ],
     excludeCredentials: processCredentialDescriptors(config.excludeCredentials),
   };
+}
 
-  return finalOptions;
+/**
+ * Build complete PublicKeyCredentialCreationOptions from RegisterConfig
+ * REFACTORED: Now composed of smaller, focused functions for better maintainability
+ */
+export function buildCreationOptionsFromConfig(
+  config: RegisterConfig,
+  webAuthnConfig: WebAuthnConfig
+): PublicKeyCredentialCreationOptions {
+  const baseOptions = createBaseCreationOptions(webAuthnConfig);
+  const presetOptions = applyPresetConfiguration(
+    config,
+    baseOptions,
+    webAuthnConfig
+  );
+  const finalOptions = applyUserOverrides(config, presetOptions);
+  return assembleFinalCreationOptions(finalOptions, config, webAuthnConfig);
 }
 
 /**
