@@ -561,7 +561,7 @@ export class WebAuthnService {
    * @returns Observable that throws an appropriate WebAuthnError subclass
    * @private
    */
-  private handleWebAuthnError(error: any): Observable<never> {
+  private handleWebAuthnError(error: unknown): Observable<never> {
     if (error instanceof DOMException) {
       return this.handleDOMException(error);
     }
@@ -614,7 +614,7 @@ export class WebAuthnService {
    * @returns True if the error is a JSON parsing error, false otherwise
    * @private
    */
-  private isJSONParsingError(error: any): boolean {
+  private isJSONParsingError(error: unknown): boolean {
     return (
       error instanceof TypeError &&
       (error.message.includes('parseCreationOptionsFromJSON') ||
@@ -630,9 +630,14 @@ export class WebAuthnService {
    * @returns Observable that throws an InvalidOptionsError
    * @private
    */
-  private handleJSONParsingError(error: TypeError): Observable<never> {
+  private handleJSONParsingError(error: unknown): Observable<never> {
+    // At this point we know it's a TypeError from isJSONParsingError check
     return throwError(
-      () => new InvalidOptionsError('Invalid JSON options format', error)
+      () =>
+        new InvalidOptionsError(
+          'Invalid JSON options format',
+          error as TypeError
+        )
     );
   }
 
@@ -644,13 +649,15 @@ export class WebAuthnService {
    * @returns Observable that throws a generic WebAuthnError
    * @private
    */
-  private handleUnknownError(error: any): Observable<never> {
+  private handleUnknownError(error: unknown): Observable<never> {
+    const message =
+      error instanceof Error ? error.message : 'Unknown error occurred';
     return throwError(
       () =>
         new WebAuthnError(
           WebAuthnErrorType.UNKNOWN,
-          `Unexpected error: ${error.message}`,
-          error
+          `Unexpected error: ${message}`,
+          error instanceof Error ? error : new Error(String(error))
         )
     );
   }
