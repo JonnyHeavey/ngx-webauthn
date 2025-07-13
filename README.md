@@ -21,7 +21,11 @@ A powerful Angular library for WebAuthn (Web Authentication API) integration tha
 
 ## Demo Application
 
-Try the interactive demo to see the library in action:
+**🌟 [Try the live demo](https://jonnyheavey.github.io/ngx-webauthn/) 🌟**
+
+You can try the interactive demo online at https://jonnyheavey.github.io/ngx-webauthn/ to see the library in action.
+
+Alternatively, run the demo locally:
 
 ```bash
 # Start the demo app
