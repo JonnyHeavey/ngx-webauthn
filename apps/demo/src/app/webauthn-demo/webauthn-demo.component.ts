@@ -6,12 +6,13 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatInputModule } from '@angular/material/input';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatTabsModule } from '@angular/material/tabs';
-import { MatIconModule } from '@angular/material/icon';
+import { MatIconModule, MatIconRegistry } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatChipsModule } from '@angular/material/chips';
 import { MatDividerModule } from '@angular/material/divider';
 import { MatExpansionModule } from '@angular/material/expansion';
+import { DomSanitizer } from '@angular/platform-browser';
 import {
   WebAuthnService,
   WebAuthnSupport,
@@ -66,6 +67,15 @@ interface StoredCredential {
           <mat-card-subtitle>
             Test WebAuthn registration and authentication
           </mat-card-subtitle>
+          <span class="spacer"></span>
+          <a
+            mat-icon-button
+            href="https://github.com/JonnyHeavey/ngx-webauthn"
+            target="_blank"
+            aria-label="View on GitHub"
+          >
+            <mat-icon svgIcon="github"></mat-icon>
+          </a>
         </mat-card-header>
         <mat-card-content>
           <div class="support-info">
@@ -395,10 +405,20 @@ interface StoredCredential {
         margin-bottom: 20px;
       }
 
+      .header-card mat-card-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+      }
+
       .header-card mat-card-title {
         display: flex;
         align-items: center;
         gap: 8px;
+      }
+
+      .spacer {
+        flex: 1 1 auto;
       }
 
       .support-info {
@@ -602,7 +622,14 @@ export class WebAuthnDemoComponent {
     },
   ];
 
-  constructor() {
+  constructor(
+    private matIconRegistry: MatIconRegistry,
+    private domSanitizer: DomSanitizer
+  ) {
+    this.matIconRegistry.addSvgIcon(
+      'github',
+      this.domSanitizer.bypassSecurityTrustResourceUrl('assets/github-logo.svg')
+    );
     this.loadSupport();
     this.loadStoredCredentials();
   }
