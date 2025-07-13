@@ -191,8 +191,6 @@ export function resolvePreset(presetName: PresetName) {
  * Creates base creation options from WebAuthn service configuration.
  * Establishes default timeout and attestation settings that can be overridden later.
  *
- * Part of the refactored buildCreationOptionsFromConfig function for better maintainability.
- *
  * @param webAuthnConfig The global WebAuthn service configuration
  * @returns Partial creation options with base settings applied
  */
@@ -208,8 +206,6 @@ function createBaseCreationOptions(
 /**
  * Applies preset configuration to base creation options.
  * Merges preset-specific authenticator selection and public key parameters into the options.
- *
- * Part of the refactored buildCreationOptionsFromConfig function for better maintainability.
  *
  * @param config The register configuration containing preset information
  * @param baseOptions The base options to apply preset configuration to
@@ -243,8 +239,6 @@ function applyPresetConfiguration(
 /**
  * Applies user-specified overrides to creation options.
  * Allows users to override any preset or default settings with their own values.
- *
- * Part of the refactored buildCreationOptionsFromConfig function for better maintainability.
  *
  * @param config The register configuration containing user overrides
  * @param options The options to apply user overrides to
@@ -286,8 +280,6 @@ function applyUserOverrides(
  * Assembles final creation options with all required WebAuthn fields.
  * Processes user information, challenge, and applies final service configuration.
  *
- * Part of the refactored buildCreationOptionsFromConfig function for better maintainability.
- *
  * @param options The partially built options from previous steps
  * @param config The register configuration containing user and RP information
  * @param webAuthnConfig The global WebAuthn service configuration
@@ -328,9 +320,6 @@ function assembleFinalCreationOptions(
  * 2. Applying preset-specific settings if specified
  * 3. Applying user overrides for customization
  * 4. Assembling final options with all required fields
- *
- * REFACTORED: Previously a 75-line monolithic function, now broken into focused sub-functions
- * for better maintainability, testability, and single responsibility adherence.
  *
  * @param config The high-level register configuration with preset support
  * @param webAuthnConfig The global WebAuthn service configuration

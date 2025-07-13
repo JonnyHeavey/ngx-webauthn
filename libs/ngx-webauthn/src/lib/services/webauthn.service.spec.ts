@@ -781,11 +781,16 @@ describe('WebAuthnService', () => {
       service
         .register({ username: 'test', preset: 'passkey', rp: { name: 'Test' } })
         .subscribe({
-          next: () => done(new Error('Should not succeed')),
-          error: (error) => {
-            expect(error).toBeInstanceOf(WebAuthnError);
-            expect(error.message).toContain('Public key extraction failed');
+          next: (response) => {
+            // FIXED: Registration should succeed even when public key extraction fails
+            expect(response.success).toBe(true);
+            expect(response.publicKey).toBeUndefined(); // Public key should be undefined
+            expect(response.credentialId).toBeTruthy();
+            expect(response.transports).toEqual(['usb']);
             done();
+          },
+          error: (error) => {
+            done(error); // Should not reach here
           },
         });
     });

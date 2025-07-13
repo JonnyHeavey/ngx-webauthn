@@ -361,6 +361,120 @@ export class WebAuthnService {
   }
 
   /**
+   * Validates that the credential is a valid PublicKeyCredential.
+   *
+   * @param credential Raw credential from navigator.credentials.create()
+   * @returns Validated PublicKeyCredential
+   * @throws {AuthenticatorError} When credential is invalid or null
+   * @private
+   */
+  private validateRegistrationCredential(
+    credential: Credential | null
+  ): PublicKeyCredential {
+    if (!isPublicKeyCredential(credential)) {
+      throw new AuthenticatorError('No credential returned from authenticator');
+    }
+    return credential;
+  }
+
+  /**
+   * Extracts basic credential information (ID and transports).
+   *
+   * @param credential Validated PublicKeyCredential
+   * @returns Object containing credential ID and supported transports
+   * @private
+   */
+  private extractCredentialInfo(credential: PublicKeyCredential): {
+    credentialId: string;
+    transports: AuthenticatorTransport[];
+  } {
+    const response = credential.response as AuthenticatorAttestationResponse;
+
+    return {
+      credentialId: arrayBufferToBase64url(credential.rawId),
+      transports: (response.getTransports?.() ||
+        []) as AuthenticatorTransport[],
+    };
+  }
+
+  /**
+   * Safely extracts the public key with proper error handling.
+   *
+   * @param response AuthenticatorAttestationResponse
+   * @returns Public key as base64url string, or undefined if extraction fails
+   * @private
+   */
+  private extractPublicKey(
+    response: AuthenticatorAttestationResponse
+  ): string | undefined {
+    try {
+      const publicKeyBuffer = response.getPublicKey?.();
+      if (publicKeyBuffer) {
+        return arrayBufferToBase64url(publicKeyBuffer);
+      }
+    } catch {
+      // Public key extraction failed - this is okay, not all algorithms are supported
+      // Some authenticators or algorithms don't provide extractable public keys
+    }
+
+    return undefined;
+  }
+
+  /**
+   * Creates the raw WebAuthn response for backward compatibility.
+   * Handles the fallback logic for missing public key data.
+   *
+   * @param credential Validated PublicKeyCredential
+   * @param credentialId Already extracted credential ID
+   * @param publicKey Extracted public key (may be undefined)
+   * @returns Complete WebAuthnRegistrationResult
+   * @private
+   */
+  private createRawRegistrationResponse(
+    credential: PublicKeyCredential,
+    credentialId: string,
+    publicKey: string | undefined
+  ): WebAuthnRegistrationResult {
+    const response = credential.response as AuthenticatorAttestationResponse;
+
+    return {
+      credentialId,
+      publicKey: publicKey || arrayBufferToBase64url(new ArrayBuffer(0)), // Clean fallback
+      attestationObject: arrayBufferToBase64url(response.attestationObject),
+      clientDataJSON: arrayBufferToBase64url(response.clientDataJSON),
+      transports: (response.getTransports?.() ||
+        []) as AuthenticatorTransport[],
+    };
+  }
+
+  /**
+   * Assembles the final registration response.
+   * Combines all extracted data into the final response format.
+   *
+   * @param credentialInfo Basic credential information
+   * @param publicKey Extracted public key
+   * @param rawResponse Raw WebAuthn response
+   * @returns Complete RegistrationResponse
+   * @private
+   */
+  private assembleRegistrationResponse(
+    credentialInfo: {
+      credentialId: string;
+      transports: AuthenticatorTransport[];
+    },
+    publicKey: string | undefined,
+    rawResponse: WebAuthnRegistrationResult
+  ): RegistrationResponse {
+    return {
+      success: true,
+      credentialId: credentialInfo.credentialId,
+      publicKey,
+      transports: credentialInfo.transports,
+      rawResponse,
+    };
+  }
+
+  /**
    * Processes the result of a WebAuthn registration operation.
    * Converts the browser credential response into a structured RegistrationResponse.
    *
@@ -372,45 +486,30 @@ export class WebAuthnService {
   private processRegistrationResult(
     credential: Credential | null
   ): RegistrationResponse {
-    if (!isPublicKeyCredential(credential)) {
-      throw new AuthenticatorError('No credential returned from authenticator');
-    }
+    // 1. Validate input
+    const validCredential = this.validateRegistrationCredential(credential);
 
-    const response = credential.response as AuthenticatorAttestationResponse;
+    // 2. Extract basic information
+    const credentialInfo = this.extractCredentialInfo(validCredential);
 
-    // Extract data using the response methods
-    const credentialId = arrayBufferToBase64url(credential.rawId);
-    const transports = (response.getTransports?.() ||
-      []) as AuthenticatorTransport[];
+    // 3. Handle complex public key extraction
+    const response =
+      validCredential.response as AuthenticatorAttestationResponse;
+    const publicKey = this.extractPublicKey(response);
 
-    let publicKey: string | undefined;
-    try {
-      const publicKeyBuffer = response.getPublicKey?.();
-      if (publicKeyBuffer) {
-        publicKey = arrayBufferToBase64url(publicKeyBuffer);
-      }
-    } catch {
-      // Public key extraction failed - this is okay, not all algorithms are supported
-    }
+    // 4. Create backward-compatible raw response
+    const rawResponse = this.createRawRegistrationResponse(
+      validCredential,
+      credentialInfo.credentialId,
+      publicKey
+    );
 
-    // Create the raw response for backward compatibility
-    const rawResponse: WebAuthnRegistrationResult = {
-      credentialId,
-      publicKey:
-        publicKey ||
-        arrayBufferToBase64url(response.getPublicKey?.() || new ArrayBuffer(0)),
-      attestationObject: arrayBufferToBase64url(response.attestationObject),
-      clientDataJSON: arrayBufferToBase64url(response.clientDataJSON),
-      transports: transports,
-    };
-
-    return {
-      success: true,
-      credentialId,
+    // 5. Assemble final response
+    return this.assembleRegistrationResponse(
+      credentialInfo,
       publicKey,
-      transports,
-      rawResponse,
-    };
+      rawResponse
+    );
   }
 
   /**
@@ -457,9 +556,6 @@ export class WebAuthnService {
   /**
    * Central error handling dispatcher for WebAuthn operations.
    * Routes different error types to specialized handlers for proper error classification.
-   *
-   * This function was refactored from a large switch statement into a clean delegation pattern
-   * for better maintainability and testability.
    *
    * @param error The error to handle (can be DOMException, TypeError, or any other error)
    * @returns Observable that throws an appropriate WebAuthnError subclass
