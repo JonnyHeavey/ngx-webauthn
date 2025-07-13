@@ -19,14 +19,11 @@ import {
   AuthenticationResponse,
   WebAuthnRegistrationResult,
   WebAuthnAuthenticationResult,
-} from '../models/webauthn.models';
+} from '../model';
 
-import {
-  RegisterInput,
-  AuthenticateInput,
-  isRegisterConfig,
-  isAuthenticateConfig,
-} from '../models/register-config.models';
+import { RegisterInput, AuthenticateInput } from '../model';
+
+import { isRegisterConfig, isAuthenticateConfig } from '../utils/type-guards';
 
 import {
   buildCreationOptionsFromConfig,
@@ -46,7 +43,7 @@ import {
   TimeoutError,
 } from '../errors/webauthn.errors';
 
-import { WEBAUTHN_CONFIG } from '../config/webauthn.config';
+import { WEBAUTHN_CONFIG } from '../model/service-config';
 
 // Import consolidated utility functions
 import {

@@ -10,7 +10,7 @@ import {
   RelyingPartyConfig,
   WEBAUTHN_CONFIG,
   createWebAuthnConfig,
-} from '../config/webauthn.config';
+} from '../model/service-config';
 
 /**
  * Provides WebAuthn service with required relying party configuration

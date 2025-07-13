@@ -7,11 +7,8 @@
  */
 
 import { PRESET_MAP, type PresetName } from '../presets/webauthn.presets';
-import type {
-  RegisterConfig,
-  AuthenticateConfig,
-} from '../models/register-config.models';
-import type { WebAuthnConfig } from '../config/webauthn.config';
+import type { RegisterConfig, AuthenticateConfig } from '../model';
+import type { WebAuthnConfig } from '../model/service-config';
 
 /**
  * Deep merge utility that properly handles nested objects

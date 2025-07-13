@@ -1,6 +1,6 @@
 import { TestBed } from '@angular/core/testing';
 import { WebAuthnService } from './webauthn.service';
-import { RegisterConfig, AuthenticateConfig } from '../models/webauthn.models';
+import { RegisterConfig, AuthenticateConfig } from '../model';
 import {
   WebAuthnError,
   WebAuthnErrorType,
@@ -15,7 +15,7 @@ import {
   WEBAUTHN_CONFIG,
   createWebAuthnConfig,
   type WebAuthnConfig,
-} from '../config/webauthn.config';
+} from '../model/service-config';
 
 // Mock PublicKeyCredential class
 class MockPublicKeyCredential {

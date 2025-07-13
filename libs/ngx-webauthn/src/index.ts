@@ -5,12 +5,12 @@ export { WebAuthnService } from './lib/services/webauthn.service';
 export type {
   WebAuthnConfig,
   RelyingPartyConfig,
-} from './lib/config/webauthn.config';
+} from './lib/model/service-config';
 export {
   WEBAUTHN_CONFIG,
   createWebAuthnConfig,
   DEFAULT_WEBAUTHN_CONFIG,
-} from './lib/config/webauthn.config';
+} from './lib/model/service-config';
 
 // Providers
 export {
@@ -25,19 +25,16 @@ export type {
   WebAuthnSupport,
   RegistrationResponse,
   AuthenticationResponse,
-  // New configuration types
   RegisterConfig,
   AuthenticateConfig,
   RegisterInput,
   AuthenticateInput,
   PresetName,
-} from './lib/models/webauthn.models';
-
-// Additional configuration models
-export type {
-  RegisterConfig as RegisterConfigModel,
-  AuthenticateConfig as AuthenticateConfigModel,
-} from './lib/models/register-config.models';
+  EnhancedRelyingParty,
+  FlexibleUserId,
+  FlexibleChallenge,
+  FlexibleCredentialDescriptors,
+} from './lib/model';
 
 // Error types for enhanced error handling
 export {
@@ -72,6 +69,14 @@ export {
   isJSONOptions,
   isPublicKeyCredential,
 } from './lib/utils/webauthn.utils';
+
+// Type guards
+export {
+  isRegisterConfig,
+  isAuthenticateConfig,
+  isCreationOptions,
+  isRequestOptions,
+} from './lib/utils/type-guards';
 
 // Preset configurations
 export {

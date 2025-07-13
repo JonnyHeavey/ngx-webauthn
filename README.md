@@ -458,7 +458,7 @@ npx nx lint ngx-webauthn
 
 - `libs/ngx-webauthn/` - Main library source code
   - `src/lib/presets/` - Preset configurations
-  - `src/lib/models/` - TypeScript interfaces
+  - `src/lib/model/` - TypeScript interfaces
   - `src/lib/services/` - Core WebAuthn service
   - `src/lib/utils/` - Utility functions
   - `src/lib/errors/` - Error classes
