@@ -203,7 +203,7 @@ export class WebAuthnService {
    * // Config with credential filtering
    * this.webAuthnService.authenticate({
    *   username: 'john.doe',
-   *   preset: 'secondFactor',
+   *   preset: 'externalSecurityKey',
    *   allowCredentials: ['credential-id-1', 'credential-id-2']
    * });
    *

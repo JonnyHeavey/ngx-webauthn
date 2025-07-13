@@ -83,7 +83,7 @@ export class MyComponent {
   registerSecondFactor() {
     this.webAuthn.register({
       username: 'john.doe@example.com',
-      preset: 'secondFactor',
+      preset: 'externalSecurityKey',
       rp: { name: 'My App' }
     }).subscribe({
       next: (result) => console.log('Second factor registered:', result),
@@ -114,18 +114,18 @@ export class MyComponent {
 - Works with both platform and cross-platform authenticators
 - Supports credential syncing across devices
 
-### `secondFactor`
+### `externalSecurityKey`
 
-**Security key as second factor after password**
+**External security key as second factor after password**
 
 - Discourages resident keys (server-side credential storage)
 - Prefers user verification
 - Favors cross-platform authenticators (USB/NFC security keys)
 - Credentials typically not synced between devices
 
-### `deviceBound`
+### `platformAuthenticator`
 
-**High-security, device-bound credentials**
+**High-security, platform authenticator credentials**
 
 - Requires platform authenticators (built-in biometrics/PIN)
 - Requires resident keys for discoverability
@@ -191,7 +191,7 @@ this.webAuthn.register(jsonOptions).subscribe((result) => {
 All presets are exported as constants for transparency:
 
 ```typescript
-import { PASSKEY_PRESET, SECOND_FACTOR_PRESET, DEVICE_BOUND_PRESET } from 'ngx-webauthn';
+import { PASSKEY_PRESET, EXTERNAL_SECURITY_KEY_PRESET, PLATFORM_AUTHENTICATOR_PRESET } from 'ngx-webauthn';
 
 console.log('Passkey configuration:', PASSKEY_PRESET);
 // Output: { authenticatorSelection: { residentKey: 'required', ... }, ... }
@@ -204,7 +204,7 @@ console.log('Passkey configuration:', PASSKEY_PRESET);
 ```typescript
 interface RegisterConfig {
   username: string; // Required: username for the credential
-  preset?: 'passkey' | 'secondFactor' | 'deviceBound';
+  preset?: 'passkey' | 'externalSecurityKey' | 'platformAuthenticator';
   displayName?: string; // Defaults to username
   rp?: { name: string; id?: string }; // Relying party info
   challenge?: string | Uint8Array; // Auto-generated if not provided
@@ -218,7 +218,7 @@ interface RegisterConfig {
 ```typescript
 interface AuthenticateConfig {
   username?: string; // Optional username hint
-  preset?: 'passkey' | 'secondFactor' | 'deviceBound';
+  preset?: 'passkey' | 'externalSecurityKey' | 'platformAuthenticator';
   challenge?: string | Uint8Array; // Auto-generated if not provided
   timeout?: number; // Defaults to 60000ms
   allowCredentials?: string[] | PublicKeyCredentialDescriptor[];

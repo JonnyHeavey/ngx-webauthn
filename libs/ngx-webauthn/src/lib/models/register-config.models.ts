@@ -63,8 +63,8 @@ export interface RegisterConfig
   /**
    * Optional preset to use as base configuration
    * - 'passkey': Modern passwordless, cross-device credentials
-   * - 'secondFactor': Security key as second factor after password
-   * - 'deviceBound': High-security, device-bound credentials
+   * - 'externalSecurityKey': External security key as second factor after password
+   * - 'platformAuthenticator': High-security, platform authenticator credentials
    */
   preset?: PresetName;
 

@@ -162,8 +162,8 @@ export class SupportCheckComponent implements OnInit {
 The library includes intelligent presets for common WebAuthn use cases:
 
 - **`passkey`** - Modern passwordless authentication with credential syncing
-- **`secondFactor`** - Traditional 2FA with hardware security keys
-- **`deviceBound`** - High-security single-device authentication
+- **`externalSecurityKey`** - Traditional 2FA with hardware security keys
+- **`platformAuthenticator`** - High-security single-device authentication
 
 ```typescript
 // Simple preset usage

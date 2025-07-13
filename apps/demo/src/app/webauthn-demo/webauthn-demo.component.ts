@@ -21,8 +21,8 @@ import {
   AuthenticateConfig,
   PresetName,
   PASSKEY_PRESET,
-  SECOND_FACTOR_PRESET,
-  DEVICE_BOUND_PRESET,
+  EXTERNAL_SECURITY_KEY_PRESET,
+  PLATFORM_AUTHENTICATOR_PRESET,
   WebAuthnError,
   UserCancelledError,
   AuthenticatorError,
@@ -591,14 +591,14 @@ export class WebAuthnDemoComponent {
       description: 'Modern passwordless, cross-device credentials',
     },
     {
-      value: 'secondFactor',
-      label: 'Second Factor',
-      description: 'Security key as second factor after password',
+      value: 'externalSecurityKey',
+      label: 'External Security Key',
+      description: 'External security key as second factor after password',
     },
     {
-      value: 'deviceBound',
-      label: 'Device Bound',
-      description: 'High-security, device-bound credentials',
+      value: 'platformAuthenticator',
+      label: 'Platform Authenticator',
+      description: 'High-security, platform authenticator credentials',
     },
   ];
 
