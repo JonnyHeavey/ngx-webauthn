@@ -161,8 +161,11 @@ interface StoredCredential {
                     @if (isRegistering()) {
                     <mat-spinner diameter="20"></mat-spinner>
                     Registering... } @else {
-                    <mat-icon>add</mat-icon>
-                    Register Credential }
+                    <ng-container>
+                      <mat-icon>add</mat-icon>
+                      Register Credential
+                    </ng-container>
+                    }
                   </button>
                 </div>
 
@@ -256,8 +259,11 @@ interface StoredCredential {
                           @if (isAuthenticating()) {
                           <mat-spinner diameter="20"></mat-spinner>
                           Authenticating... } @else {
-                          <mat-icon>login</mat-icon>
-                          Authenticate }
+                          <ng-container>
+                            <mat-icon>login</mat-icon>
+                            Authenticate
+                          </ng-container>
+                          }
                         </button>
                       </div>
                     </mat-card-content>
@@ -279,8 +285,11 @@ interface StoredCredential {
                     @if (isAuthenticating()) {
                     <mat-spinner diameter="20"></mat-spinner>
                     Authenticating... } @else {
-                    <mat-icon>login</mat-icon>
-                    Authenticate with Any Credential }
+                    <ng-container>
+                      <mat-icon>login</mat-icon>
+                      Authenticate with Any Credential
+                    </ng-container>
+                    }
                   </button>
                 </div>
                 } @if (lastAuthenticationResult()) {
