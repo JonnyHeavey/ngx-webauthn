@@ -44,23 +44,3 @@ export function provideWebAuthn(
     WebAuthnService,
   ];
 }
-
-/**
- * @deprecated Use provideWebAuthn(relyingParty, config) instead.
- * This version is kept for backward compatibility but requires relying party information.
- */
-export function provideWebAuthnLegacy(config: WebAuthnConfig): Provider[] {
-  if (!config.relyingParty) {
-    throw new Error(
-      'WebAuthn configuration must include relying party information. Use provideWebAuthn(relyingParty, config) instead.'
-    );
-  }
-
-  return [
-    {
-      provide: WEBAUTHN_CONFIG,
-      useValue: config,
-    },
-    WebAuthnService,
-  ];
-}

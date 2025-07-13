@@ -13,10 +13,7 @@ export {
 } from './lib/model/service-config';
 
 // Providers
-export {
-  provideWebAuthn,
-  provideWebAuthnLegacy,
-} from './lib/providers/webauthn.providers';
+export { provideWebAuthn } from './lib/providers/webauthn.providers';
 
 // Core models and response types
 export type {
