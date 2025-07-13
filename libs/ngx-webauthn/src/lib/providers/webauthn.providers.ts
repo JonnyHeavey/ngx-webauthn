@@ -10,7 +10,7 @@ import {
   RelyingPartyConfig,
   WEBAUTHN_CONFIG,
   createWebAuthnConfig,
-} from '../config/webauthn.config';
+} from '../model/service-config';
 
 /**
  * Provides WebAuthn service with required relying party configuration
@@ -40,26 +40,6 @@ export function provideWebAuthn(
     {
       provide: WEBAUTHN_CONFIG,
       useValue: createWebAuthnConfig(relyingParty, config),
-    },
-    WebAuthnService,
-  ];
-}
-
-/**
- * @deprecated Use provideWebAuthn(relyingParty, config) instead.
- * This version is kept for backward compatibility but requires relying party information.
- */
-export function provideWebAuthnLegacy(config: WebAuthnConfig): Provider[] {
-  if (!config.relyingParty) {
-    throw new Error(
-      'WebAuthn configuration must include relying party information. Use provideWebAuthn(relyingParty, config) instead.'
-    );
-  }
-
-  return [
-    {
-      provide: WEBAUTHN_CONFIG,
-      useValue: config,
     },
     WebAuthnService,
   ];

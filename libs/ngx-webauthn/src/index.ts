@@ -5,18 +5,15 @@ export { WebAuthnService } from './lib/services/webauthn.service';
 export type {
   WebAuthnConfig,
   RelyingPartyConfig,
-} from './lib/config/webauthn.config';
+} from './lib/model/service-config';
 export {
   WEBAUTHN_CONFIG,
   createWebAuthnConfig,
   DEFAULT_WEBAUTHN_CONFIG,
-} from './lib/config/webauthn.config';
+} from './lib/model/service-config';
 
 // Providers
-export {
-  provideWebAuthn,
-  provideWebAuthnLegacy,
-} from './lib/providers/webauthn.providers';
+export { provideWebAuthn } from './lib/providers/webauthn.providers';
 
 // Core models and response types
 export type {
@@ -25,19 +22,16 @@ export type {
   WebAuthnSupport,
   RegistrationResponse,
   AuthenticationResponse,
-  // New configuration types
   RegisterConfig,
   AuthenticateConfig,
   RegisterInput,
   AuthenticateInput,
   PresetName,
-} from './lib/models/webauthn.models';
-
-// Additional configuration models
-export type {
-  RegisterConfig as RegisterConfigModel,
-  AuthenticateConfig as AuthenticateConfigModel,
-} from './lib/models/register-config.models';
+  EnhancedRelyingParty,
+  FlexibleUserId,
+  FlexibleChallenge,
+  FlexibleCredentialDescriptors,
+} from './lib/model';
 
 // Error types for enhanced error handling
 export {
@@ -73,10 +67,18 @@ export {
   isPublicKeyCredential,
 } from './lib/utils/webauthn.utils';
 
+// Type guards
+export {
+  isRegisterConfig,
+  isAuthenticateConfig,
+  isCreationOptions,
+  isRequestOptions,
+} from './lib/utils/type-guards';
+
 // Preset configurations
 export {
   PRESET_MAP,
   PASSKEY_PRESET,
-  SECOND_FACTOR_PRESET,
-  DEVICE_BOUND_PRESET,
+  EXTERNAL_SECURITY_KEY_PRESET,
+  PLATFORM_AUTHENTICATOR_PRESET,
 } from './lib/presets/webauthn.presets';

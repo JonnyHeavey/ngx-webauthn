@@ -37,7 +37,7 @@ export const PASSKEY_PRESET = {
 } as const;
 
 /**
- * Preset for using a security key as a second factor after a password.
+ * Preset for using an external security key as a second factor after a password.
  *
  * Best for: Traditional 2FA scenarios where users already have a password
  * and want to add hardware security key as a second factor.
@@ -48,7 +48,7 @@ export const PASSKEY_PRESET = {
  * - Favors cross-platform authenticators (USB/NFC security keys)
  * - Credentials typically not synced between devices
  */
-export const SECOND_FACTOR_PRESET = {
+export const EXTERNAL_SECURITY_KEY_PRESET = {
   ...COMMON_PUB_KEY_CRED_PARAMS,
   authenticatorSelection: {
     residentKey: 'discouraged',
@@ -58,10 +58,10 @@ export const SECOND_FACTOR_PRESET = {
 } as const;
 
 /**
- * Preset for high-security, non-synced, single-device credentials.
+ * Preset for high-security, non-synced, platform authenticator credentials.
  *
  * Best for: High-security scenarios where credentials must stay on a single
- * device and user verification is mandatory.
+ * device and user verification is mandatory using built-in platform authenticators.
  *
  * Features:
  * - Requires platform authenticators (built-in biometrics/PIN)
@@ -69,7 +69,7 @@ export const SECOND_FACTOR_PRESET = {
  * - Requires user verification (biometric/PIN)
  * - Credentials bound to specific device (no syncing)
  */
-export const DEVICE_BOUND_PRESET = {
+export const PLATFORM_AUTHENTICATOR_PRESET = {
   ...COMMON_PUB_KEY_CRED_PARAMS,
   authenticatorSelection: {
     authenticatorAttachment: 'platform',
@@ -84,8 +84,8 @@ export const DEVICE_BOUND_PRESET = {
  */
 export const PRESET_MAP = {
   passkey: PASSKEY_PRESET,
-  secondFactor: SECOND_FACTOR_PRESET,
-  deviceBound: DEVICE_BOUND_PRESET,
+  externalSecurityKey: EXTERNAL_SECURITY_KEY_PRESET,
+  platformAuthenticator: PLATFORM_AUTHENTICATOR_PRESET,
 } as const;
 
 /**

@@ -1,6 +1,8 @@
 /**
- * WebAuthn Configuration
- * Provides configuration interfaces and injection token for WebAuthn service
+ * Service-level configuration for WebAuthn operations
+ *
+ * These interfaces define the global configuration that affects the entire WebAuthn service,
+ * including relying party information and default settings.
  */
 
 import { InjectionToken } from '@angular/core';

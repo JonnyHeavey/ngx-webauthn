@@ -1,6 +1,13 @@
 /**
- * Result of WebAuthn registration
- * Simplified version with all ArrayBuffers converted to Base64URL strings
+ * Response interfaces for WebAuthn operations
+ *
+ * This file contains both raw WebAuthn results (converted to Base64URL strings)
+ * and enhanced user-friendly response formats.
+ */
+
+/**
+ * Raw result of WebAuthn registration
+ * Simplified version with all ArrayBuffers converted to Base64URL strings for easier handling
  */
 export interface WebAuthnRegistrationResult {
   credentialId: string; // Base64URL encoded
@@ -11,8 +18,8 @@ export interface WebAuthnRegistrationResult {
 }
 
 /**
- * Result of WebAuthn authentication
- * Simplified version with all ArrayBuffers converted to Base64URL strings
+ * Raw result of WebAuthn authentication
+ * Simplified version with all ArrayBuffers converted to Base64URL strings for easier handling
  */
 export interface WebAuthnAuthenticationResult {
   credentialId: string; // Base64URL encoded
@@ -23,17 +30,8 @@ export interface WebAuthnAuthenticationResult {
 }
 
 /**
- * Browser support information
- */
-export interface WebAuthnSupport {
-  isSupported: boolean;
-  isPlatformAuthenticatorAvailable: boolean;
-  supportedTransports: AuthenticatorTransport[];
-}
-
-/**
  * Enhanced registration response with clean, developer-friendly format
- * Used by the new high-level register() method
+ * Used by the high-level register() method
  */
 export interface RegistrationResponse {
   /**
@@ -58,15 +56,15 @@ export interface RegistrationResponse {
   transports?: AuthenticatorTransport[];
 
   /**
-   * Raw WebAuthn response for advanced users who need access to all data
-   * This preserves backward compatibility and provides access to attestation objects, etc.
+   * Complete raw WebAuthn response for advanced use cases
+   * Provides access to all WebAuthn data including attestation objects, metadata, etc.
    */
   rawResponse?: WebAuthnRegistrationResult;
 }
 
 /**
  * Enhanced authentication response with clean, developer-friendly format
- * Used by the new high-level authenticate() method
+ * Used by the high-level authenticate() method
  */
 export interface AuthenticationResponse {
   /**
@@ -86,16 +84,17 @@ export interface AuthenticationResponse {
   userHandle?: string;
 
   /**
-   * Raw WebAuthn response for advanced users who need access to all data
-   * This preserves backward compatibility and provides access to signatures, etc.
+   * Complete raw WebAuthn response for advanced use cases
+   * Provides access to all WebAuthn data including signatures, authenticator data, etc.
    */
   rawResponse?: WebAuthnAuthenticationResult;
 }
 
-export type {
-  RegisterConfig,
-  AuthenticateConfig,
-  RegisterInput,
-  AuthenticateInput,
-  PresetName,
-} from './register-config.models';
+/**
+ * Browser support information
+ */
+export interface WebAuthnSupport {
+  isSupported: boolean;
+  isPlatformAuthenticatorAvailable: boolean;
+  supportedTransports: AuthenticatorTransport[];
+}

@@ -1,17 +1,23 @@
 # ngx-webauthn
 
-A comprehensive Angular library that provides a clean, type-safe abstraction over the WebAuthn API. This library simplifies the implementation of passwordless authentication using passkeys, security keys, and biometric authentication.
+> ⚠️ **BETA SOFTWARE** ⚠️
+>
+> This library is currently in beta. The API surface is subject to change in future versions.
+> Please use with caution in production environments and be prepared to update your code
+> when new versions are released.
+
+A comprehensive Angular library that provides a clean, type-safe abstraction over the WebAuthn API. This library offers direct support for native WebAuthn types while providing an optional preset system for common scenarios.
 
 ## Features
 
-- 🔐 **Complete WebAuthn Support** - Registration and authentication flows
-- 🛡️ **Type Safety** - Full TypeScript support with comprehensive interfaces
-- 🎯 **Clean API** - Simplified abstraction over complex WebAuthn APIs
+- 🔐 **Complete WebAuthn Support** - Full registration and authentication flows
+- 🛡️ **Native Type Safety** - Direct support for WebAuthn types with full TypeScript support
+- 🎯 **Flexible API** - Use native WebAuthn options directly or simplified presets
 - 📱 **Cross-Platform** - Works with platform authenticators (Face ID, Touch ID, Windows Hello)
 - 🔑 **Security Keys** - Support for external authenticators (YubiKey, etc.)
 - ⚡ **RxJS Integration** - Observable-based API that fits naturally into Angular
 - 🧪 **Well Tested** - Comprehensive unit test coverage
-- 📖 **Browser Support** - Works in all modern browsers with WebAuthn support
+- 📖 **Browser Support Detection** - Check WebAuthn and platform authenticator availability
 
 ## Installation
 
@@ -61,7 +67,9 @@ import { WEBAUTHN_CONFIG, createWebAuthnConfig } from 'ngx-webauthn';
 export class AppModule {}
 ```
 
-### 2. Use the Service with Presets
+### 2. Use Native WebAuthn Types
+
+The library provides direct support for standard WebAuthn types, giving you full control:
 
 ```typescript
 import { Component, inject } from '@angular/core';
@@ -83,46 +91,160 @@ export class AuthComponent {
   isSupported = this.webAuthnService.isSupported();
 
   register() {
-    this.webAuthnService
-      .register({
-        username: 'john.doe@example.com',
-        preset: 'passkey', // Easy preset configuration!
-      })
-      .subscribe({
-        next: (result) => {
-          console.log('Registration successful:', result);
-          // Send result.credentialId, result.publicKey, etc. to your server
-        },
-        error: (error: WebAuthnError) => {
-          console.error('Registration failed:', error.message);
-          if (error.type === WebAuthnErrorType.USER_CANCELLED) {
-            // User cancelled or denied permission
-          }
-        },
-      });
+    // Native WebAuthn creation options
+    const creationOptions: PublicKeyCredentialCreationOptions = {
+      rp: {
+        name: 'My App',
+        id: 'myapp.com',
+      },
+      user: {
+        id: new TextEncoder().encode('user123'),
+        name: 'john.doe@example.com',
+        displayName: 'John Doe',
+      },
+      challenge: crypto.getRandomValues(new Uint8Array(32)),
+      pubKeyCredParams: [
+        { type: 'public-key', alg: -7 }, // ES256
+        { type: 'public-key', alg: -257 }, // RS256
+      ],
+      authenticatorSelection: {
+        authenticatorAttachment: 'platform',
+        userVerification: 'required',
+        residentKey: 'required',
+      },
+      timeout: 60000,
+      attestation: 'direct',
+    };
+
+    this.webAuthnService.register(creationOptions).subscribe({
+      next: (result) => {
+        console.log('Registration successful:', result);
+        // Send result.credentialId, result.publicKey, etc. to your server
+      },
+      error: (error: WebAuthnError) => {
+        console.error('Registration failed:', error.message);
+        if (error.type === WebAuthnErrorType.USER_CANCELLED) {
+          // User cancelled or denied permission
+        }
+      },
+    });
   }
 
   authenticate() {
-    this.webAuthnService
-      .authenticate({
-        preset: 'passkey', // Uses the same preset for consistency
-        // Optional: specify allowed credentials
-        allowCredentials: ['credential-id-from-registration'],
-      })
-      .subscribe({
-        next: (result) => {
-          console.log('Authentication successful:', result);
-          // Send result to your server for verification
+    // Native WebAuthn request options
+    const requestOptions: PublicKeyCredentialRequestOptions = {
+      challenge: crypto.getRandomValues(new Uint8Array(32)),
+      allowCredentials: [
+        {
+          type: 'public-key',
+          id: new TextEncoder().encode('credential-id-from-registration'),
+          transports: ['internal'],
         },
-        error: (error: WebAuthnError) => {
-          console.error('Authentication failed:', error.message);
-        },
-      });
+      ],
+      userVerification: 'preferred',
+      timeout: 60000,
+    };
+
+    this.webAuthnService.authenticate(requestOptions).subscribe({
+      next: (result) => {
+        console.log('Authentication successful:', result);
+        // Send result to your server for verification
+      },
+      error: (error: WebAuthnError) => {
+        console.error('Authentication failed:', error.message);
+      },
+    });
   }
 }
 ```
 
-### 2. Check Browser Support
+### 3. Using JSON WebAuthn Options
+
+The library also supports JSON-based WebAuthn options with base64url encoding:
+
+```typescript
+register() {
+  // JSON WebAuthn creation options (base64url encoded)
+  const jsonOptions: PublicKeyCredentialCreationOptionsJSON = {
+    rp: {
+      name: 'My App',
+      id: 'myapp.com'
+    },
+    user: {
+      id: 'dXNlcjEyMw', // base64url encoded 'user123'
+      name: 'john.doe@example.com',
+      displayName: 'John Doe',
+    },
+    challenge: 'Y2hhbGxlbmdlMTIzNDU2Nzg5MA', // base64url encoded challenge
+    pubKeyCredParams: [
+      { type: 'public-key', alg: -7 },
+      { type: 'public-key', alg: -257 },
+    ],
+    authenticatorSelection: {
+      authenticatorAttachment: 'cross-platform',
+      userVerification: 'preferred',
+      residentKey: 'discouraged',
+    },
+    timeout: 60000,
+    attestation: 'none',
+  };
+
+  this.webAuthnService.register(jsonOptions).subscribe({
+    next: (result) => {
+      console.log('Registration successful:', result);
+    },
+    error: (error: WebAuthnError) => {
+      console.error('Registration failed:', error.message);
+    },
+  });
+}
+```
+
+### 4. Alternative: Simplified Preset System
+
+For convenience, the library includes an optional preset system for common scenarios:
+
+```typescript
+register() {
+  this.webAuthnService
+    .register({
+      username: 'john.doe@example.com',
+      preset: 'passkey', // Easy preset configuration!
+    })
+    .subscribe({
+      next: (result) => {
+        console.log('Registration successful:', result);
+        // Send result.credentialId, result.publicKey, etc. to your server
+      },
+      error: (error: WebAuthnError) => {
+        console.error('Registration failed:', error.message);
+        if (error.type === WebAuthnErrorType.USER_CANCELLED) {
+          // User cancelled or denied permission
+        }
+      },
+    });
+}
+
+authenticate() {
+  this.webAuthnService
+    .authenticate({
+      preset: 'passkey', // Uses the same preset for consistency
+      // Optional: specify allowed credentials
+      allowCredentials: ['credential-id-from-registration'],
+    })
+    .subscribe({
+      next: (result) => {
+        console.log('Authentication successful:', result);
+        // Send result to your server for verification
+      },
+      error: (error: WebAuthnError) => {
+        console.error('Authentication failed:', error.message);
+      },
+    });
+}
+```
+
+### 5. Check Browser Support
 
 ```typescript
 import { Component, OnInit, inject } from '@angular/core';
@@ -155,25 +277,126 @@ export class SupportCheckComponent implements OnInit {
 }
 ```
 
+## Native WebAuthn Types Support
+
+The library provides comprehensive support for standard WebAuthn types:
+
+### Registration with Native Types
+
+```typescript
+// Native ArrayBuffer-based creation options
+const nativeOptions: PublicKeyCredentialCreationOptions = {
+  rp: { name: 'My App', id: 'myapp.com' },
+  user: {
+    id: new TextEncoder().encode('user-id'),
+    name: 'user@example.com',
+    displayName: 'User Name',
+  },
+  challenge: crypto.getRandomValues(new Uint8Array(32)),
+  pubKeyCredParams: [
+    { type: 'public-key', alg: -7 }, // ES256
+    { type: 'public-key', alg: -257 }, // RS256
+  ],
+  excludeCredentials: [
+    {
+      type: 'public-key',
+      id: new TextEncoder().encode('existing-credential-id'),
+      transports: ['usb', 'nfc'],
+    },
+  ],
+  authenticatorSelection: {
+    authenticatorAttachment: 'platform',
+    userVerification: 'required',
+    residentKey: 'required',
+  },
+  timeout: 60000,
+  attestation: 'direct',
+};
+
+this.webAuthnService.register(nativeOptions).subscribe((result) => {
+  console.log('Registration complete:', result);
+});
+```
+
+### Authentication with Native Types
+
+```typescript
+// Native ArrayBuffer-based request options
+const nativeRequest: PublicKeyCredentialRequestOptions = {
+  challenge: crypto.getRandomValues(new Uint8Array(32)),
+  allowCredentials: [
+    {
+      type: 'public-key',
+      id: new TextEncoder().encode('credential-id'),
+      transports: ['internal', 'usb'],
+    },
+  ],
+  userVerification: 'preferred',
+  timeout: 60000,
+};
+
+this.webAuthnService.authenticate(nativeRequest).subscribe((result) => {
+  console.log('Authentication complete:', result);
+});
+```
+
+### JSON WebAuthn Options
+
+```typescript
+// JSON base64url-encoded creation options
+const jsonOptions: PublicKeyCredentialCreationOptionsJSON = {
+  rp: { name: 'My App', id: 'myapp.com' },
+  user: {
+    id: 'dXNlci1pZA', // base64url encoded 'user-id'
+    name: 'user@example.com',
+    displayName: 'User Name',
+  },
+  challenge: 'Y2hhbGxlbmdlLWRhdGE', // base64url encoded challenge
+  pubKeyCredParams: [
+    { type: 'public-key', alg: -7 },
+    { type: 'public-key', alg: -257 },
+  ],
+  excludeCredentials: [
+    {
+      type: 'public-key',
+      id: 'ZXhpc3RpbmctY3JlZGVudGlhbC1pZA', // base64url encoded
+      transports: ['usb', 'nfc'],
+    },
+  ],
+  authenticatorSelection: {
+    authenticatorAttachment: 'platform',
+    userVerification: 'required',
+    residentKey: 'required',
+  },
+  timeout: 60000,
+  attestation: 'direct',
+};
+
+this.webAuthnService.register(jsonOptions).subscribe((result) => {
+  console.log('Registration complete:', result);
+});
+```
+
 ## Features Overview
 
-### 🎯 **Preset System**
+### 🎯 **Optional Preset System**
 
 The library includes intelligent presets for common WebAuthn use cases:
 
 - **`passkey`** - Modern passwordless authentication with credential syncing
-- **`secondFactor`** - Traditional 2FA with hardware security keys
-- **`deviceBound`** - High-security single-device authentication
+- **`externalSecurityKey`** - Traditional 2FA with hardware security keys
+- **`platformAuthenticator`** - High-security single-device authentication
 
 ```typescript
 // Simple preset usage
 this.webAuthnService.register({ username: 'user@example.com', preset: 'passkey' });
 
-// Preset with custom overrides
+// Preset with custom overrides (native WebAuthn options)
 this.webAuthnService.register({
   username: 'user@example.com',
   preset: 'passkey',
   authenticatorSelection: { userVerification: 'required' },
+  timeout: 30000,
 });
 ```
 
@@ -200,14 +423,14 @@ interface WebAuthnConfig {
 Supports multiple input formats for maximum flexibility:
 
 ```typescript
-// High-level config (recommended)
-service.register({ username: 'user@example.com', preset: 'passkey' });
-
-// Native WebAuthn options
+// Native WebAuthn options (recommended for full control)
 service.register(nativeCreationOptions);
 
 // JSON WebAuthn options (base64url strings)
 service.register(jsonCreationOptions);
+
+// High-level preset config (convenience)
+service.register({ username: 'user@example.com', preset: 'passkey' });
 ```
 
 ## API Reference
@@ -226,11 +449,19 @@ Returns detailed information about WebAuthn support including platform authentic
 
 ##### `register(input: RegisterInput): Observable<RegistrationResponse>`
 
-Registers a new WebAuthn credential. Accepts either high-level config objects or direct WebAuthn options.
+Registers a new WebAuthn credential. Accepts native WebAuthn options, JSON options, or high-level config objects.
+
+```typescript
+type RegisterInput = PublicKeyCredentialCreationOptions | PublicKeyCredentialCreationOptionsJSON | RegisterConfig;
+```
 
 ##### `authenticate(input: AuthenticateInput): Observable<AuthenticationResponse>`
 
-Authenticates using an existing WebAuthn credential. Accepts either high-level config objects or direct WebAuthn options.
+Authenticates using an existing WebAuthn credential. Accepts native WebAuthn options, JSON options, or high-level config objects.
+
+```typescript
+type AuthenticateInput = PublicKeyCredentialRequestOptions | PublicKeyCredentialRequestOptionsJSON | AuthenticateConfig;
+```
 
 ### Response Types
 
@@ -242,7 +473,7 @@ interface RegistrationResponse {
   credentialId: string; // Base64url encoded
   publicKey?: string; // Base64url encoded (if available)
   transports?: AuthenticatorTransport[];
-  rawResponse?: WebAuthnRegistrationResult; // For advanced usage
+  rawResponse?: WebAuthnRegistrationResult; // Complete WebAuthn data for advanced usage
 }
 ```
 
@@ -253,7 +484,7 @@ interface AuthenticationResponse {
   success: boolean;
   credentialId: string; // Base64url encoded
   userHandle?: string; // Base64url encoded
-  rawResponse?: WebAuthnAuthenticationResult; // For advanced usage
+  rawResponse?: WebAuthnAuthenticationResult; // Complete WebAuthn data for advanced usage
 }
 ```
 
@@ -306,46 +537,6 @@ class WebAuthnError extends Error {
 
 ## Advanced Usage
 
-### Using Direct WebAuthn Options
-
-```typescript
-// Native creation options
-const creationOptions: PublicKeyCredentialCreationOptions = {
-  rp: { name: 'My App' },
-  user: {
-    id: new Uint8Array([1, 2, 3, 4]),
-    name: 'john.doe@example.com',
-    displayName: 'John Doe',
-  },
-  challenge: new Uint8Array([5, 6, 7, 8]),
-  pubKeyCredParams: [{ type: 'public-key', alg: -7 }],
-};
-
-this.webAuthnService.register(creationOptions).subscribe((result) => {
-  console.log('Registration complete:', result);
-});
-```
-
-### JSON WebAuthn Options
-
-```typescript
-// JSON options also work (base64url strings instead of ArrayBuffers)
-const jsonOptions: PublicKeyCredentialCreationOptionsJSON = {
-  rp: { name: 'My App' },
-  user: {
-    id: 'dXNlcklk',
-    name: 'john.doe@example.com',
-    displayName: 'John Doe',
-  },
-  challenge: 'Y2hhbGxlbmdl',
-  pubKeyCredParams: [{ type: 'public-key', alg: -7 }],
-};
-
-this.webAuthnService.register(jsonOptions).subscribe((result) => {
-  console.log('Registration complete:', result);
-});
-```
-
 ### Config with Custom Challenge
 
 ```typescript
@@ -365,6 +556,35 @@ this.webAuthnService
   });
 ```
 
+### Preset System (Optional)
+
+#### RegisterConfig
+
+```typescript
+interface RegisterConfig {
+  username: string; // Required: username for the credential
+  preset?: 'passkey' | 'externalSecurityKey' | 'platformAuthenticator';
+  displayName?: string; // Defaults to username
+  rp?: { name: string; id?: string }; // Relying party info
+  challenge?: string | Uint8Array; // Auto-generated if not provided
+  timeout?: number; // Defaults to 60000ms
+  // ... other native WebAuthn options as overrides
+}
+```
+
+#### AuthenticateConfig
+
+```typescript
+interface AuthenticateConfig {
+  username?: string; // Optional username hint
+  preset?: 'passkey' | 'externalSecurityKey' | 'platformAuthenticator';
+  challenge?: string | Uint8Array; // Auto-generated if not provided
+  timeout?: number; // Defaults to 60000ms
+  allowCredentials?: string[] | PublicKeyCredentialDescriptor[];
+  // ... other native WebAuthn options as overrides
+}
+```
+
 ## Server-Side Integration
 
 This library handles the client-side WebAuthn flow. You'll need a server-side implementation to:
@@ -381,17 +601,6 @@ Popular server-side libraries:
 - **Java**: `webauthn4j`
 - **Python**: `py_webauthn`
 - **Go**: `go-webauthn`
-
-## Browser Support
-
-WebAuthn is supported in all modern browsers:
-
-- Chrome 67+
-- Firefox 60+
-- Safari 14+
-- Edge 18+
-
-Check current support at [caniuse.com/webauthn](https://caniuse.com/webauthn).
 
 ## Development
 
