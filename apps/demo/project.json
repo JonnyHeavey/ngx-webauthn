@@ -43,6 +43,23 @@
           "optimization": false,
           "extractLicenses": false,
           "sourceMap": true
+        },
+        "github-pages": {
+          "baseHref": "/ngx-webauthn/",
+          "deployUrl": "/ngx-webauthn/",
+          "outputHashing": "all",
+          "budgets": [
+            {
+              "type": "initial",
+              "maximumWarning": "500kb",
+              "maximumError": "1.5mb"
+            },
+            {
+              "type": "anyComponentStyle",
+              "maximumWarning": "4kb",
+              "maximumError": "8kb"
+            }
+          ]
         }
       },
       "defaultConfiguration": "production"

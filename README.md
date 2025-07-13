@@ -484,3 +484,20 @@ MIT License - see LICENSE file for details.
 - [Passkey Guidelines](https://passkeys.dev/)
 - [Angular Documentation](https://angular.io/)
 - [Nx Documentation](https://nx.dev/)
+
+## Demo Deployment
+
+The demo application is automatically deployed to GitHub Pages on every push to the main branch.
+
+**Live Demo:** [https://jonnyheavey.github.io/ngx-webauthn/](https://jonnyheavey.github.io/ngx-webauthn/)
+
+### Deployment Workflow
+
+- **Trigger:** Automatic on main branch pushes + manual dispatch
+- **Build Process:** Library → Demo (with GitHub Pages base href)
+- **Deployment:** GitHub Actions → GitHub Pages
+- **URL:** `https://jonnyheavey.github.io/ngx-webauthn/`
+
+### Development Notes
+
+The demo uses WebAuthn which requires HTTPS. GitHub Pages provides this automatically, making it suitable for real WebAuthn testing. Note that credentials created on `localhost` during development won't work on the GitHub Pages domain due to WebAuthn's origin-based security model.
