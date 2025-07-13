@@ -8,6 +8,30 @@ import { provideAnimationsAsync } from '@angular/platform-browser/animations/asy
 import { appRoutes } from './app.routes';
 import { provideWebAuthn } from 'ngx-webauthn';
 
+/**
+ * Determines the appropriate RP ID based on the current hostname
+ */
+function getRpId(): string {
+  if (typeof window === 'undefined') {
+    return 'localhost'; // Fallback for SSR
+  }
+
+  const hostname = window.location.hostname;
+
+  // For localhost development
+  if (hostname === 'localhost' || hostname === '127.0.0.1') {
+    return 'localhost';
+  }
+
+  // For GitHub Pages deployment
+  if (hostname === 'jonnyheavey.github.io') {
+    return 'jonnyheavey.github.io';
+  }
+
+  // For any other deployment, use the current hostname
+  return hostname;
+}
+
 export const appConfig: ApplicationConfig = {
   providers: [
     provideBrowserGlobalErrorListeners(),
@@ -18,10 +42,9 @@ export const appConfig: ApplicationConfig = {
       {
         // Required: Human-readable name for your application
         name: 'WebAuthn Demo',
-        // Required for production: Must match your domain
-        // For development on localhost, use 'localhost'
-        // For production, use your actual domain (e.g., 'example.com' or 'auth.example.com')
-        id: 'localhost',
+        // Dynamically set the RP ID based on the current hostname
+        // This ensures the demo works on both localhost and GitHub Pages
+        id: getRpId(),
       },
       {
         // Optional configuration overrides
