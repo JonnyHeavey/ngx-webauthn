@@ -12,6 +12,7 @@ import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatChipsModule } from '@angular/material/chips';
 import { MatDividerModule } from '@angular/material/divider';
 import { MatExpansionModule } from '@angular/material/expansion';
+import { MatSelectModule } from '@angular/material/select';
 import {
   WebAuthnService,
   WebAuthnSupport,
@@ -54,6 +55,7 @@ interface StoredCredential {
     MatChipsModule,
     MatDividerModule,
     MatExpansionModule,
+    MatSelectModule,
   ],
   template: `
     <div class="demo-container">
@@ -62,9 +64,18 @@ interface StoredCredential {
           <mat-card-title>
             <mat-icon>fingerprint</mat-icon>
             WebAuthn Demo
+            <a
+              href="https://github.com/JonnyHeavey/ngx-webauthn"
+              target="_blank"
+              class="github-link"
+            >
+              <mat-icon>open_in_new</mat-icon>
+              View on GitHub
+            </a>
           </mat-card-title>
           <mat-card-subtitle>
-            Test WebAuthn registration and authentication
+            Test WebAuthn registration and authentication with ngx-webauthn
+            library
           </mat-card-subtitle>
         </mat-card-header>
         <mat-card-content>
@@ -117,13 +128,16 @@ interface StoredCredential {
 
       <mat-tab-group class="demo-tabs">
         <!-- Registration Tab -->
-        <mat-tab label="Registration">
+        <mat-tab label="Preset Registration">
           <div class="tab-content">
             <mat-card>
               <mat-card-header>
-                <mat-card-title>Register New Credential</mat-card-title>
+                <mat-card-title
+                  >Register New Credential (Using Presets)</mat-card-title
+                >
                 <mat-card-subtitle
-                  >Create a new WebAuthn credential</mat-card-subtitle
+                  >Create a new WebAuthn credential using preset configurations
+                  for common use cases</mat-card-subtitle
                 >
               </mat-card-header>
               <mat-card-content>
@@ -204,14 +218,16 @@ interface StoredCredential {
         </mat-tab>
 
         <!-- Authentication Tab -->
-        <mat-tab label="Authentication">
+        <mat-tab label="Preset Authentication">
           <div class="tab-content">
             <mat-card>
               <mat-card-header>
-                <mat-card-title>Authenticate with Credential</mat-card-title>
+                <mat-card-title
+                  >Authenticate with Credential (Using Presets)</mat-card-title
+                >
                 <mat-card-subtitle
-                  >Use an existing WebAuthn credential to
-                  authenticate</mat-card-subtitle
+                  >Use an existing WebAuthn credential to authenticate with
+                  preset configurations</mat-card-subtitle
                 >
               </mat-card-header>
               <mat-card-content>
@@ -389,6 +405,160 @@ interface StoredCredential {
             </mat-card>
           </div>
         </mat-tab>
+
+        <!-- Direct Options Tab -->
+        <mat-tab label="Direct Options">
+          <div class="tab-content">
+            <mat-card>
+              <mat-card-header>
+                <mat-card-title>Direct WebAuthn Options</mat-card-title>
+                <mat-card-subtitle>
+                  Use raw WebAuthn options for maximum control
+                </mat-card-subtitle>
+              </mat-card-header>
+              <mat-card-content>
+                <div class="direct-options-info">
+                  <p>
+                    This section demonstrates how to use the library with direct
+                    <code>PublicKeyCredentialCreationOptions</code> and
+                    <code>PublicKeyCredentialRequestOptions</code> instead of
+                    presets.
+                  </p>
+                </div>
+
+                <form class="direct-options-form">
+                  <div class="form-row">
+                    <mat-form-field appearance="outline">
+                      <mat-label>Username</mat-label>
+                      <input
+                        matInput
+                        [(ngModel)]="directOptionsForm.username"
+                        name="directUsername"
+                        required
+                      />
+                      <mat-icon matSuffix>person</mat-icon>
+                    </mat-form-field>
+
+                    <mat-form-field appearance="outline">
+                      <mat-label>Display Name</mat-label>
+                      <input
+                        matInput
+                        [(ngModel)]="directOptionsForm.displayName"
+                        name="directDisplayName"
+                        required
+                      />
+                      <mat-icon matSuffix>badge</mat-icon>
+                    </mat-form-field>
+                  </div>
+
+                  <div class="form-row">
+                    <mat-form-field appearance="outline">
+                      <mat-label>Timeout (ms)</mat-label>
+                      <input
+                        matInput
+                        type="number"
+                        [(ngModel)]="directOptionsForm.timeout"
+                        name="directTimeout"
+                        min="10000"
+                        max="300000"
+                      />
+                      <mat-icon matSuffix>timer</mat-icon>
+                    </mat-form-field>
+
+                    <mat-form-field appearance="outline">
+                      <mat-label>User Verification</mat-label>
+                      <mat-select
+                        [(ngModel)]="directOptionsForm.userVerification"
+                        name="directUserVerification"
+                      >
+                        <mat-option value="required">Required</mat-option>
+                        <mat-option value="preferred">Preferred</mat-option>
+                        <mat-option value="discouraged">Discouraged</mat-option>
+                      </mat-select>
+                      <mat-icon matSuffix>verified_user</mat-icon>
+                    </mat-form-field>
+                  </div>
+
+                  <div class="form-row">
+                    <mat-form-field appearance="outline">
+                      <mat-label>Attestation</mat-label>
+                      <mat-select
+                        [(ngModel)]="directOptionsForm.attestation"
+                        name="directAttestation"
+                      >
+                        <mat-option value="none">None</mat-option>
+                        <mat-option value="indirect">Indirect</mat-option>
+                        <mat-option value="direct">Direct</mat-option>
+                        <mat-option value="enterprise">Enterprise</mat-option>
+                      </mat-select>
+                      <mat-icon matSuffix>security</mat-icon>
+                    </mat-form-field>
+
+                    <mat-form-field appearance="outline">
+                      <mat-label>Resident Key</mat-label>
+                      <mat-select
+                        [(ngModel)]="directOptionsForm.residentKey"
+                        name="directResidentKey"
+                      >
+                        <mat-option value="discouraged">Discouraged</mat-option>
+                        <mat-option value="preferred">Preferred</mat-option>
+                        <mat-option value="required">Required</mat-option>
+                      </mat-select>
+                      <mat-icon matSuffix>key</mat-icon>
+                    </mat-form-field>
+                  </div>
+
+                  <div class="form-actions">
+                    <button
+                      mat-raised-button
+                      color="primary"
+                      [disabled]="
+                        isDirectRegistering() || !isDirectOptionsFormValid()
+                      "
+                      (click)="registerWithDirectOptions()"
+                    >
+                      @if (isDirectRegistering()) {
+                      <mat-spinner diameter="20"></mat-spinner>
+                      Creating Credential... } @else {
+                      <ng-container>
+                        <mat-icon>add_circle</mat-icon>
+                        Register with Direct Options
+                      </ng-container>
+                      }
+                    </button>
+
+                    @if (storedCredentials().length > 0) {
+                    <button
+                      mat-raised-button
+                      color="accent"
+                      [disabled]="isDirectAuthenticating()"
+                      (click)="authenticateWithDirectOptions()"
+                    >
+                      @if (isDirectAuthenticating()) {
+                      <mat-spinner diameter="20"></mat-spinner>
+                      Authenticating... } @else {
+                      <ng-container>
+                        <mat-icon>login</mat-icon>
+                        Authenticate with Direct Options
+                      </ng-container>
+                      }
+                    </button>
+                    }
+                  </div>
+                </form>
+
+                <div class="direct-options-example">
+                  <h4>Generated Options Preview:</h4>
+                  <p>
+                    This shows how your form inputs translate to WebAuthn
+                    options:
+                  </p>
+                  <pre><code>{{ getDirectOptionsPreview() }}</code></pre>
+                </div>
+              </mat-card-content>
+            </mat-card>
+          </div>
+        </mat-tab>
       </mat-tab-group>
     </div>
   `,
@@ -408,6 +578,29 @@ interface StoredCredential {
         display: flex;
         align-items: center;
         gap: 8px;
+        justify-content: space-between;
+      }
+
+      .github-link {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        color: #666;
+        text-decoration: none;
+        font-size: 14px;
+        font-weight: normal;
+        transition: color 0.2s ease;
+      }
+
+      .github-link:hover {
+        color: #1976d2;
+        text-decoration: underline;
+      }
+
+      .github-link mat-icon {
+        font-size: 18px;
+        width: 18px;
+        height: 18px;
       }
 
       .support-info {
@@ -565,6 +758,52 @@ interface StoredCredential {
           gap: 12px;
         }
       }
+
+      .direct-options-form {
+        display: flex;
+        flex-direction: column;
+        gap: 20px;
+      }
+
+      .direct-options-info {
+        margin-bottom: 20px;
+        padding: 16px;
+        background-color: #f5f5f5;
+        border-radius: 8px;
+      }
+
+      .direct-options-info code {
+        background-color: #e0e0e0;
+        padding: 2px 4px;
+        border-radius: 3px;
+        font-family: 'Roboto Mono', monospace;
+      }
+
+      .direct-options-example {
+        margin-top: 24px;
+        padding: 16px;
+        background-color: #f8f9fa;
+        border-radius: 8px;
+        border-left: 4px solid #2196f3;
+      }
+
+      .direct-options-example h4 {
+        margin-top: 0;
+        color: #1976d2;
+      }
+
+      .direct-options-example pre {
+        background-color: #fff;
+        padding: 12px;
+        border-radius: 4px;
+        overflow-x: auto;
+        font-size: 12px;
+        line-height: 1.4;
+      }
+
+      .direct-options-example code {
+        font-family: 'Roboto Mono', monospace;
+      }
     `,
   ],
 })
@@ -591,6 +830,21 @@ export class WebAuthnDemoComponent {
     displayName: 'Demo User',
     preset: 'passkey' as PresetName,
   };
+
+  // Direct options form data
+  directOptionsForm = {
+    username: 'direct-user',
+    displayName: 'Direct User',
+    timeout: 60000,
+    userVerification: 'preferred' as UserVerificationRequirement,
+    attestation: 'none' as AttestationConveyancePreference,
+    residentKey: 'preferred' as ResidentKeyRequirement,
+    algorithms: [-7, -257] as number[], // ES256 and RS256
+  };
+
+  // State for direct options
+  isDirectRegistering = signal(false);
+  isDirectAuthenticating = signal(false);
 
   // Available presets for the UI
   presets: { value: PresetName; label: string; description: string }[] = [
@@ -777,5 +1031,126 @@ export class WebAuthnDemoComponent {
       duration,
       panelClass: ['error-snackbar'],
     });
+  }
+
+  // Direct options methods
+  registerWithDirectOptions(): void {
+    if (!this.isDirectOptionsFormValid()) {
+      return;
+    }
+
+    this.isDirectRegistering.set(true);
+
+    // Create custom WebAuthn options
+    const customOptions: PublicKeyCredentialCreationOptions = {
+      challenge: crypto.getRandomValues(new Uint8Array(32)),
+      rp: {
+        name: 'WebAuthn Demo (Direct)',
+        id: 'localhost',
+      },
+      user: {
+        id: new TextEncoder().encode(this.directOptionsForm.username),
+        name: this.directOptionsForm.username,
+        displayName: this.directOptionsForm.displayName,
+      },
+      pubKeyCredParams: this.directOptionsForm.algorithms.map((alg) => ({
+        type: 'public-key',
+        alg: alg,
+      })),
+      timeout: this.directOptionsForm.timeout,
+      attestation: this.directOptionsForm.attestation,
+      authenticatorSelection: {
+        userVerification: this.directOptionsForm.userVerification,
+        residentKey: this.directOptionsForm.residentKey,
+      },
+      excludeCredentials: this.storedCredentials().map((cred) => ({
+        type: 'public-key',
+        id: new TextEncoder().encode(cred.id),
+      })),
+    };
+
+    this.webAuthnService.register(customOptions).subscribe({
+      next: (result: RegistrationResponse) => {
+        this.lastRegistrationResult.set(result);
+        this.saveCredential(result);
+        this.snackBar.open('Registration successful!', 'Close', {
+          duration: 3000,
+          panelClass: ['success-snackbar'],
+        });
+        this.isDirectRegistering.set(false);
+      },
+      error: (error) => {
+        this.handleError('Registration failed', error);
+        this.isDirectRegistering.set(false);
+      },
+    });
+  }
+
+  authenticateWithDirectOptions(): void {
+    this.isDirectAuthenticating.set(true);
+
+    // Create custom authentication options
+    const customOptions: PublicKeyCredentialRequestOptions = {
+      challenge: crypto.getRandomValues(new Uint8Array(32)),
+      timeout: this.directOptionsForm.timeout,
+      userVerification: this.directOptionsForm.userVerification,
+      allowCredentials: this.storedCredentials().map((cred) => ({
+        type: 'public-key',
+        id: new TextEncoder().encode(cred.id),
+        transports: cred.transports as AuthenticatorTransport[],
+      })),
+    };
+
+    this.webAuthnService.authenticate(customOptions).subscribe({
+      next: (result: AuthenticationResponse) => {
+        this.lastAuthenticationResult.set(result);
+        this.snackBar.open('Authentication successful!', 'Close', {
+          duration: 3000,
+          panelClass: ['success-snackbar'],
+        });
+        this.isDirectAuthenticating.set(false);
+      },
+      error: (error) => {
+        this.handleError('Authentication failed', error);
+        this.isDirectAuthenticating.set(false);
+      },
+    });
+  }
+
+  isDirectOptionsFormValid(): boolean {
+    return (
+      this.directOptionsForm.username.trim() !== '' &&
+      this.directOptionsForm.displayName.trim() !== '' &&
+      this.directOptionsForm.timeout > 0 &&
+      this.directOptionsForm.algorithms.length > 0
+    );
+  }
+
+  getDirectOptionsPreview(): string {
+    const registrationOptions = {
+      rp: {
+        name: 'WebAuthn Demo (Direct)',
+        id: 'localhost',
+      },
+      user: {
+        name: this.directOptionsForm.username,
+        displayName: this.directOptionsForm.displayName,
+        id: '[generated-user-id]',
+      },
+      pubKeyCredParams: this.directOptionsForm.algorithms.map((alg) => ({
+        type: 'public-key',
+        alg: alg,
+      })),
+      timeout: this.directOptionsForm.timeout,
+      attestation: this.directOptionsForm.attestation,
+      authenticatorSelection: {
+        userVerification: this.directOptionsForm.userVerification,
+        residentKey: this.directOptionsForm.residentKey,
+      },
+      challenge: '[32-byte-random-challenge]',
+      excludeCredentials: '[existing-credentials]',
+    };
+
+    return JSON.stringify(registrationOptions, null, 2);
   }
 }
