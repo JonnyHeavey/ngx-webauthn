@@ -27,31 +27,16 @@ In short, when you submit code changes, your submissions are understood to be un
 ## Report bugs using Github's [issues](https://github.com/briandilley/ngx-webauthn/issues)
 We use GitHub issues to track public bugs. Report a bug by [opening a new issue](); it's that easy!
 
-## Write bug reports with detail, background, and sample code
-[This is an example](http://stackoverflow.com/q/12488905/180626) of a bug report, and I think it's a good model. Here's another example from [Craig Hockenberry](http://www.openradar.me/11905408).
-
 **Great Bug Reports** tend to have:
 
 - A quick summary and/or background
 - Steps to reproduce
-  - Be specific!
-  - Give sample code if you can. [My stackoverflow question](http.stackoverflow.com/q/12488905/180626) includes sample code that *anyone* with a base R setup can run to reproduce what I was seeing
 - What you expected would happen
 - What actually happens
 - Notes (possibly including why you think this might be happening, or stuff you tried that didn't work)
 
-People *love* thorough bug reports. I'm not even kidding.
-
-## Use a Consistent Coding Style
-I'm again borrowing these from [Facebook's Draft](https://github.com/facebook/draft-js/blob/a9316a723f9e918afde44dea68b5f9f39b7d9b00/CONTRIBUTING.md):
-* 2 spaces for indentation rather than tabs
-* You can try running `npm run lint` for style unification
-
 ## License
 By contributing, you agree that your contributions will be licensed under its MIT License.
-
-## References
-This document was adapted from the open-source contribution guidelines for [Facebook's Draft](https://github.com/facebook/draft-js/blob/a9316a723f9e918afde44dea68b5f9f39b7d9b00/CONTRIBUTING.md)
 
 # Contributing to NgxWebauthn
 
@@ -65,22 +50,6 @@ First off, thank you for considering contributing to NgxWebauthn! It's people li
 4.  **Make your changes**, and **add tests** for any new functionality.
 5.  **Run the test suite** to ensure that your changes don't break anything.
 6.  **Submit a pull request** with a clear description of your changes.
-
-## Getting Started
-
-To get started with developing NgxWebauthn, you'll need to have [Node.js](https://nodejs.org/) and [npm](https://www.npmjs.com/) installed on your machine.
-
-1.  **Install the dependencies:**
-
-    ```bash
-    npm install
-    ```
-
-2.  **Build the library:**
-
-    ```bash
-    npx nx build ngx-webauthn
-    ```
 
 ## Coding Standards
 
