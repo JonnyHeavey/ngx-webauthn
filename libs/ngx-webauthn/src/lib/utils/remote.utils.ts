@@ -29,7 +29,7 @@ import { InvalidRemoteOptionsError } from '../errors/webauthn.errors';
 export function validateRemoteCreationOptions(
   options: unknown
 ): asserts options is PublicKeyCredentialCreationOptionsJSON {
-  if (!options || typeof options !== 'object') {
+  if (!options || typeof options !== 'object' || Array.isArray(options)) {
     throw new InvalidRemoteOptionsError('Response must be an object');
   }
 
@@ -222,7 +222,7 @@ export function validateRemoteCreationOptions(
 export function validateRemoteRequestOptions(
   options: unknown
 ): asserts options is PublicKeyCredentialRequestOptionsJSON {
-  if (!options || typeof options !== 'object') {
+  if (!options || typeof options !== 'object' || Array.isArray(options)) {
     throw new InvalidRemoteOptionsError('Response must be an object');
   }
 

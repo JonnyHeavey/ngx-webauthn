@@ -482,6 +482,11 @@ export class WebAuthnService {
       );
     }
 
+    // Preserve InvalidRemoteOptionsError instances (validation errors)
+    if (error instanceof InvalidRemoteOptionsError) {
+      return throwError(() => error);
+    }
+
     return throwError(
       () =>
         new WebAuthnError(

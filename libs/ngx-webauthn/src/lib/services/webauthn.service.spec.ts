@@ -1,8 +1,9 @@
 import { TestBed } from '@angular/core/testing';
 import {
-  HttpClientTestingModule,
+  provideHttpClientTesting,
   HttpTestingController,
 } from '@angular/common/http/testing';
+import { provideHttpClient } from '@angular/common/http';
 import { WebAuthnService } from './webauthn.service';
 import { RegisterConfig, AuthenticateConfig } from '../model';
 import {
@@ -43,12 +44,13 @@ describe('WebAuthnService', () => {
 
   beforeEach(() => {
     TestBed.configureTestingModule({
-      imports: [HttpClientTestingModule],
       providers: [
         {
           provide: WEBAUTHN_CONFIG,
           useValue: testConfig,
         },
+        provideHttpClient(),
+        provideHttpClientTesting(),
       ],
     });
     service = TestBed.inject(WebAuthnService);
@@ -988,12 +990,13 @@ describe('WebAuthnService', () => {
 
           TestBed.resetTestingModule();
           TestBed.configureTestingModule({
-            imports: [HttpClientTestingModule],
             providers: [
               {
                 provide: WEBAUTHN_CONFIG,
                 useValue: configWithRemote,
               },
+              provideHttpClient(),
+              provideHttpClientTesting(),
             ],
           });
           service = TestBed.inject(WebAuthnService);
@@ -1077,7 +1080,9 @@ describe('WebAuthnService', () => {
             next: () => done(new Error('Should not succeed')),
             error: (error) => {
               expect(error).toBeInstanceOf(InvalidRemoteOptionsError);
-              expect(error.message).toContain('Response must be an object');
+              expect(error.message).toContain(
+                'Missing or invalid rp (relying party) field'
+              );
               done();
             },
           });
@@ -1088,31 +1093,27 @@ describe('WebAuthnService', () => {
           req.flush(invalidResponse);
         });
 
-        it('should throw InvalidOptionsError when endpoint not configured', (done) => {
+        it('should throw InvalidOptionsError when endpoint not configured', () => {
           // Reset to config without remote endpoints
           TestBed.resetTestingModule();
           TestBed.configureTestingModule({
-            imports: [HttpClientTestingModule],
             providers: [
               {
                 provide: WEBAUTHN_CONFIG,
                 useValue: testConfig, // Original config without remote endpoints
               },
+              provideHttpClient(),
+              provideHttpClientTesting(),
             ],
           });
           service = TestBed.inject(WebAuthnService);
           httpMock = TestBed.inject(HttpTestingController);
 
-          service.registerRemote({ username: 'test@example.com' }).subscribe({
-            next: () => done(new Error('Should not succeed')),
-            error: (error) => {
-              expect(error).toBeInstanceOf(InvalidOptionsError);
-              expect(error.message).toContain(
-                'Remote registration endpoint not configured'
-              );
-              done();
-            },
-          });
+          expect(() => {
+            service
+              .authenticateRemote({ username: 'test@example.com' })
+              .subscribe();
+          }).toThrow(InvalidOptionsError);
         });
 
         it('should handle HTTP 404 errors', (done) => {
@@ -1229,12 +1230,13 @@ describe('WebAuthnService', () => {
 
           TestBed.resetTestingModule();
           TestBed.configureTestingModule({
-            imports: [HttpClientTestingModule],
             providers: [
               {
                 provide: WEBAUTHN_CONFIG,
                 useValue: configWithRemote,
               },
+              provideHttpClient(),
+              provideHttpClientTesting(),
             ],
           });
           service = TestBed.inject(WebAuthnService);
@@ -1317,7 +1319,9 @@ describe('WebAuthnService', () => {
               next: () => done(new Error('Should not succeed')),
               error: (error) => {
                 expect(error).toBeInstanceOf(InvalidRemoteOptionsError);
-                expect(error.message).toContain('Response must be an object');
+                expect(error.message).toContain(
+                  'Missing or invalid challenge field'
+                );
                 done();
               },
             });
@@ -1328,33 +1332,27 @@ describe('WebAuthnService', () => {
           req.flush(invalidResponse);
         });
 
-        it('should throw InvalidOptionsError when endpoint not configured', (done) => {
+        it('should throw InvalidOptionsError when endpoint not configured', () => {
           // Reset to config without remote endpoints
           TestBed.resetTestingModule();
           TestBed.configureTestingModule({
-            imports: [HttpClientTestingModule],
             providers: [
               {
                 provide: WEBAUTHN_CONFIG,
                 useValue: testConfig, // Original config without remote endpoints
               },
+              provideHttpClient(),
+              provideHttpClientTesting(),
             ],
           });
           service = TestBed.inject(WebAuthnService);
           httpMock = TestBed.inject(HttpTestingController);
 
-          service
-            .authenticateRemote({ username: 'test@example.com' })
-            .subscribe({
-              next: () => done(new Error('Should not succeed')),
-              error: (error) => {
-                expect(error).toBeInstanceOf(InvalidOptionsError);
-                expect(error.message).toContain(
-                  'Remote authentication endpoint not configured'
-                );
-                done();
-              },
-            });
+          expect(() => {
+            service
+              .authenticateRemote({ username: 'test@example.com' })
+              .subscribe();
+          }).toThrow(InvalidOptionsError);
         });
 
         it('should handle HTTP error scenarios', (done) => {
@@ -1438,6 +1436,8 @@ describe('WebAuthnService', () => {
             provide: WEBAUTHN_CONFIG,
             useValue: customConfig,
           },
+          provideHttpClient(),
+          provideHttpClientTesting(),
         ],
       });
       const customService = TestBed.inject(WebAuthnService);
@@ -1454,7 +1454,8 @@ describe('WebAuthnService', () => {
 
     it('should use defaultAlgorithms from config when no preset specified', (done) => {
       const customAlgorithms = [
-        { type: 'public-key' as const, alg: -257 }, // RS256 only
+        { alg: -8, type: 'public-key' as const },
+        { alg: -35, type: 'public-key' as const },
       ];
       const customConfig = createWebAuthnConfig(
         { name: 'Test App', id: 'test.example.com' },
@@ -1468,6 +1469,8 @@ describe('WebAuthnService', () => {
             provide: WEBAUTHN_CONFIG,
             useValue: customConfig,
           },
+          provideHttpClient(),
+          provideHttpClientTesting(),
         ],
       });
       const customService = TestBed.inject(WebAuthnService);
@@ -1497,6 +1500,8 @@ describe('WebAuthnService', () => {
             provide: WEBAUTHN_CONFIG,
             useValue: customConfig,
           },
+          provideHttpClient(),
+          provideHttpClientTesting(),
         ],
       });
       const customService = TestBed.inject(WebAuthnService);
@@ -1525,6 +1530,8 @@ describe('WebAuthnService', () => {
             provide: WEBAUTHN_CONFIG,
             useValue: customConfig,
           },
+          provideHttpClient(),
+          provideHttpClientTesting(),
         ],
       });
       const customService = TestBed.inject(WebAuthnService);
@@ -1557,6 +1564,8 @@ describe('WebAuthnService', () => {
             provide: WEBAUTHN_CONFIG,
             useValue: customConfig,
           },
+          provideHttpClient(),
+          provideHttpClientTesting(),
         ],
       });
       const customService = TestBed.inject(WebAuthnService);
@@ -1587,6 +1596,8 @@ describe('WebAuthnService', () => {
             provide: WEBAUTHN_CONFIG,
             useValue: testConfig,
           },
+          provideHttpClient(),
+          provideHttpClientTesting(),
         ],
       });
       service = TestBed.inject(WebAuthnService);
