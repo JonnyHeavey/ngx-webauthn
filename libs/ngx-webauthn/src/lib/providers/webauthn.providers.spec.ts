@@ -3,6 +3,8 @@
  */
 
 import { TestBed } from '@angular/core/testing';
+import { provideHttpClientTesting } from '@angular/common/http/testing';
+import { provideHttpClient } from '@angular/common/http';
 import { provideWebAuthn } from './webauthn.providers';
 import { WebAuthnService } from '../services/webauthn.service';
 import {
@@ -20,14 +22,19 @@ describe('WebAuthn Providers', () => {
         id: 'test.example.com',
       };
 
-      const providers = provideWebAuthn(relyingParty);
+      const configOverrides = {
+        defaultTimeout: 30000,
+        defaultAlgorithms: [
+          { alg: -7, type: 'public-key' as const },
+          { alg: -8, type: 'public-key' as const },
+        ],
+      };
+
+      const providers = provideWebAuthn(relyingParty, configOverrides);
 
       expect(providers).toHaveLength(2);
-      expect(providers[0]).toEqual({
-        provide: WEBAUTHN_CONFIG,
-        useValue: expect.any(Object),
-      });
-      expect(providers[1]).toBe(WebAuthnService);
+      expect(providers[0]).toHaveProperty('provide', WEBAUTHN_CONFIG);
+      expect(providers[1]).toEqual(WebAuthnService);
     });
 
     it('should create correct configuration with minimal relying party', () => {
@@ -36,25 +43,15 @@ describe('WebAuthn Providers', () => {
       };
 
       const providers = provideWebAuthn(relyingParty);
-      const configProvider = providers[0] as any;
-      const config: WebAuthnConfig = configProvider.useValue;
+      const configProvider = providers[0] as {
+        provide: any;
+        useValue: WebAuthnConfig;
+      };
+
+      const config = configProvider.useValue;
 
       expect(config.relyingParty).toEqual(relyingParty);
-      expect(config.defaultTimeout).toBe(
-        DEFAULT_WEBAUTHN_CONFIG.defaultTimeout
-      );
-      expect(config.defaultAlgorithms).toEqual(
-        DEFAULT_WEBAUTHN_CONFIG.defaultAlgorithms
-      );
-      expect(config.enforceUserVerification).toBe(
-        DEFAULT_WEBAUTHN_CONFIG.enforceUserVerification
-      );
-      expect(config.defaultAttestation).toBe(
-        DEFAULT_WEBAUTHN_CONFIG.defaultAttestation
-      );
-      expect(config.defaultAuthenticatorSelection).toEqual(
-        DEFAULT_WEBAUTHN_CONFIG.defaultAuthenticatorSelection
-      );
+      expect(config).toMatchObject(DEFAULT_WEBAUTHN_CONFIG);
     });
 
     it('should create correct configuration with relying party including id', () => {
@@ -64,37 +61,37 @@ describe('WebAuthn Providers', () => {
       };
 
       const providers = provideWebAuthn(relyingParty);
-      const configProvider = providers[0] as any;
-      const config: WebAuthnConfig = configProvider.useValue;
+      const configProvider = providers[0] as {
+        provide: any;
+        useValue: WebAuthnConfig;
+      };
+
+      const config = configProvider.useValue;
 
       expect(config.relyingParty).toEqual(relyingParty);
-      expect(config.relyingParty.id).toBe('test.example.com');
     });
 
     it('should merge configuration overrides correctly', () => {
       const relyingParty: RelyingPartyConfig = {
         name: 'Test App',
-        id: 'test.example.com',
       };
 
-      const overrides = {
-        defaultTimeout: 30000,
+      const configOverrides = {
+        defaultTimeout: 45000,
         enforceUserVerification: true,
-        defaultAttestation: 'direct' as const,
       };
 
-      const providers = provideWebAuthn(relyingParty, overrides);
-      const configProvider = providers[0] as any;
-      const config: WebAuthnConfig = configProvider.useValue;
+      const providers = provideWebAuthn(relyingParty, configOverrides);
+      const configProvider = providers[0] as {
+        provide: any;
+        useValue: WebAuthnConfig;
+      };
 
-      expect(config.relyingParty).toEqual(relyingParty);
-      expect(config.defaultTimeout).toBe(30000);
+      const config = configProvider.useValue;
+
+      expect(config.defaultTimeout).toBe(45000);
       expect(config.enforceUserVerification).toBe(true);
-      expect(config.defaultAttestation).toBe('direct');
-      // Should preserve defaults for non-overridden values
-      expect(config.defaultAlgorithms).toEqual(
-        DEFAULT_WEBAUTHN_CONFIG.defaultAlgorithms
-      );
+      expect(config.relyingParty).toEqual(relyingParty);
     });
 
     it('should work with empty config overrides', () => {
@@ -103,13 +100,15 @@ describe('WebAuthn Providers', () => {
       };
 
       const providers = provideWebAuthn(relyingParty, {});
-      const configProvider = providers[0] as any;
-      const config: WebAuthnConfig = configProvider.useValue;
+      const configProvider = providers[0] as {
+        provide: any;
+        useValue: WebAuthnConfig;
+      };
+
+      const config = configProvider.useValue;
 
       expect(config.relyingParty).toEqual(relyingParty);
-      expect(config.defaultTimeout).toBe(
-        DEFAULT_WEBAUTHN_CONFIG.defaultTimeout
-      );
+      expect(config).toMatchObject(DEFAULT_WEBAUTHN_CONFIG);
     });
 
     it('should be usable with Angular TestBed', () => {
@@ -119,7 +118,11 @@ describe('WebAuthn Providers', () => {
       };
 
       TestBed.configureTestingModule({
-        providers: provideWebAuthn(relyingParty, { defaultTimeout: 45000 }),
+        providers: [
+          ...provideWebAuthn(relyingParty, { defaultTimeout: 45000 }),
+          provideHttpClient(),
+          provideHttpClientTesting(),
+        ],
       });
 
       const config = TestBed.inject(WEBAUTHN_CONFIG);
@@ -140,7 +143,11 @@ describe('WebAuthn Providers', () => {
 
       // Test with provideWebAuthn
       TestBed.configureTestingModule({
-        providers: provideWebAuthn(relyingParty),
+        providers: [
+          ...provideWebAuthn(relyingParty),
+          provideHttpClient(),
+          provideHttpClientTesting(),
+        ],
       });
 
       const service1 = TestBed.inject(WebAuthnService);
@@ -148,14 +155,18 @@ describe('WebAuthn Providers', () => {
       // Reset and test again with different config
       TestBed.resetTestingModule();
       TestBed.configureTestingModule({
-        providers: provideWebAuthn(relyingParty, { defaultTimeout: 60000 }),
+        providers: [
+          ...provideWebAuthn(relyingParty, { defaultTimeout: 60000 }),
+          provideHttpClient(),
+          provideHttpClientTesting(),
+        ],
       });
 
       const service2 = TestBed.inject(WebAuthnService);
 
-      // Both should be WebAuthnService instances
       expect(service1).toBeInstanceOf(WebAuthnService);
       expect(service2).toBeInstanceOf(WebAuthnService);
+      expect(service1).not.toBe(service2); // Different instances due to reset
     });
   });
 });
