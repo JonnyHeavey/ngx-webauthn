@@ -277,6 +277,307 @@ export class SupportCheckComponent implements OnInit {
 }
 ```
 
+## Remote Server Integration
+
+The library supports fetching WebAuthn options from remote endpoints, allowing your server to generate the options while the client handles the WebAuthn flow:
+
+### Configuration
+
+First, configure the remote endpoints in your WebAuthn setup:
+
+```typescript
+// main.ts (standalone app)
+import { bootstrapApplication } from '@angular/platform-browser';
+import { provideHttpClient } from '@angular/common/http';
+import { provideWebAuthn } from 'ngx-webauthn';
+import { AppComponent } from './app/app.component';
+
+bootstrapApplication(AppComponent, {
+  providers: [
+    provideHttpClient(), // Required for remote functionality
+    provideWebAuthn(
+      { name: 'My App', id: 'myapp.com' },
+      {
+        remoteEndpoints: {
+          registration: 'https://api.myapp.com/webauthn/registration/options',
+          authentication: 'https://api.myapp.com/webauthn/authentication/options',
+          requestOptions: {
+            timeout: 10000, // Network timeout in milliseconds
+          },
+        },
+      }
+    ),
+    // ... other providers
+  ],
+});
+```
+
+```typescript
+// app.module.ts (module-based app)
+import { NgModule } from '@angular/core';
+import { BrowserModule } from '@angular/platform-browser';
+import { HttpClientModule } from '@angular/common/http';
+import { WEBAUTHN_CONFIG, createWebAuthnConfig } from 'ngx-webauthn';
+
+@NgModule({
+  imports: [BrowserModule, HttpClientModule],
+  providers: [
+    {
+      provide: WEBAUTHN_CONFIG,
+      useValue: createWebAuthnConfig(
+        { name: 'My App', id: 'myapp.com' },
+        {
+          remoteEndpoints: {
+            registration: 'https://api.myapp.com/webauthn/registration/options',
+            authentication: 'https://api.myapp.com/webauthn/authentication/options',
+            requestOptions: { timeout: 10000 },
+          },
+        }
+      ),
+    },
+  ],
+  // ...
+})
+export class AppModule {}
+```
+
+### Remote Registration
+
+Use `registerRemote()` to fetch creation options from your server:
+
+```typescript
+import { Component, inject } from '@angular/core';
+import { WebAuthnService } from 'ngx-webauthn';
+
+@Component({
+  selector: 'app-auth',
+  template: ` <button (click)="registerWithServer()" [disabled]="!isSupported">Register with Server</button> `,
+})
+export class AuthComponent {
+  private webAuthnService = inject(WebAuthnService);
+  isSupported = this.webAuthnService.isSupported();
+
+  registerWithServer() {
+    // Simple registration request
+    this.webAuthnService
+      .registerRemote({
+        username: 'john.doe@example.com',
+        displayName: 'John Doe',
+      })
+      .subscribe({
+        next: (response) => {
+          console.log('Registration successful:', response);
+          // Send response.rawResponse to your server for verification
+        },
+        error: (error) => {
+          console.error('Registration failed:', error);
+        },
+      });
+  }
+}
+```
+
+### Remote Authentication
+
+Use `authenticateRemote()` to fetch request options from your server:
+
+```typescript
+authenticateWithServer() {
+  // Simple authentication request
+  this.webAuthnService.authenticateRemote({
+    username: 'john.doe@example.com'
+  }).subscribe({
+    next: (response) => {
+      console.log('Authentication successful:', response);
+      // Send response.rawResponse to your server for verification
+    },
+    error: (error) => {
+      console.error('Authentication failed:', error);
+    }
+  });
+}
+```
+
+### Custom Server Payloads
+
+The library supports any payload structure your server requires:
+
+```typescript
+// Define your custom payload types
+interface MyRegistrationPayload {
+  tenantId: string;
+  department: string;
+  userId: string;
+}
+
+interface MyAuthenticationPayload {
+  sessionId: string;
+  context: 'web' | 'mobile';
+}
+
+// Use with type safety
+this.webAuthnService
+  .registerRemote<MyRegistrationPayload>({
+    tenantId: 'acme-corp',
+    department: 'engineering',
+    userId: 'emp-12345',
+  })
+  .subscribe((response) => {
+    console.log('Registration complete:', response);
+  });
+
+this.webAuthnService
+  .authenticateRemote<MyAuthenticationPayload>({
+    sessionId: 'session-abc123',
+    context: 'web',
+  })
+  .subscribe((response) => {
+    console.log('Authentication complete:', response);
+  });
+```
+
+### Server Endpoint Requirements
+
+Your server endpoints should implement the following contracts:
+
+#### Registration Endpoint
+
+**Request:** `POST /webauthn/registration/options`
+
+- **Body:** Any JSON payload your application needs
+- **Response:** `PublicKeyCredentialCreationOptionsJSON`
+
+```javascript
+// Example server response
+{
+  "rp": {
+    "name": "My App",
+    "id": "myapp.com"
+  },
+  "user": {
+    "id": "dXNlci0xMjM0NQ", // base64url encoded user ID
+    "name": "john.doe@example.com",
+    "displayName": "John Doe"
+  },
+  "challenge": "Y2hhbGxlbmdlLWRhdGE", // base64url encoded challenge
+  "pubKeyCredParams": [
+    { "type": "public-key", "alg": -7 },
+    { "type": "public-key", "alg": -257 }
+  ],
+  "timeout": 60000,
+  "attestation": "none",
+  "authenticatorSelection": {
+    "userVerification": "preferred",
+    "residentKey": "preferred"
+  },
+  "excludeCredentials": [
+    {
+      "type": "public-key",
+      "id": "Y3JlZGVudGlhbC0xMjM", // base64url encoded credential ID
+      "transports": ["usb", "nfc"]
+    }
+  ]
+}
+```
+
+#### Authentication Endpoint
+
+**Request:** `POST /webauthn/authentication/options`
+
+- **Body:** Any JSON payload your application needs (can be empty `{}`)
+- **Response:** `PublicKeyCredentialRequestOptionsJSON`
+
+```javascript
+// Example server response
+{
+  "challenge": "YXV0aC1jaGFsbGVuZ2U", // base64url encoded challenge
+  "timeout": 60000,
+  "userVerification": "preferred",
+  "allowCredentials": [
+    {
+      "type": "public-key",
+      "id": "Y3JlZGVudGlhbC0xMjM", // base64url encoded credential ID
+      "transports": ["usb", "nfc"]
+    }
+  ]
+}
+```
+
+### Error Handling
+
+Remote operations provide enhanced error context:
+
+```typescript
+import { RemoteEndpointError, InvalidRemoteOptionsError } from 'ngx-webauthn';
+
+this.webAuthnService.registerRemote(payload).subscribe({
+  error: (error) => {
+    if (error instanceof RemoteEndpointError) {
+      console.log('Server error:', error.context.status);
+      console.log('Endpoint:', error.context.url);
+      console.log('Operation:', error.context.operation);
+    } else if (error instanceof InvalidRemoteOptionsError) {
+      console.log('Server returned invalid options:', error.message);
+    }
+  },
+});
+```
+
+### Authentication and Headers
+
+Use Angular HTTP interceptors for authentication, CSRF tokens, and custom headers:
+
+```typescript
+// auth.interceptor.ts
+import { Injectable } from '@angular/core';
+import { HttpInterceptor, HttpRequest, HttpHandler } from '@angular/common/http';
+
+@Injectable()
+export class AuthInterceptor implements HttpInterceptor {
+  intercept(req: HttpRequest<any>, next: HttpHandler) {
+    // Add authentication headers for WebAuthn endpoints
+    if (req.url.includes('/webauthn/')) {
+      const authReq = req.clone({
+        setHeaders: {
+          Authorization: `Bearer ${this.getAuthToken()}`,
+          'X-CSRF-Token': this.getCsrfToken(),
+        },
+      });
+      return next.handle(authReq);
+    }
+    return next.handle(req);
+  }
+
+  private getAuthToken(): string {
+    // Your auth token logic
+    return 'your-auth-token';
+  }
+
+  private getCsrfToken(): string {
+    // Your CSRF token logic
+    return 'your-csrf-token';
+  }
+}
+
+// main.ts
+import { provideHttpClient, withInterceptors } from '@angular/common/http';
+
+bootstrapApplication(AppComponent, {
+  providers: [
+    provideHttpClient(withInterceptors([authInterceptor])),
+    // ... other providers
+  ],
+});
+```
+
+### Security Considerations
+
+- **HTTPS Required:** All remote endpoints should use HTTPS in production
+- **Authentication:** Protect your endpoints with proper authentication
+- **Validation:** Always validate the server response structure
+- **CSRF Protection:** Use CSRF tokens for state-changing operations
+- **Rate Limiting:** Implement rate limiting on your WebAuthn endpoints
+
 ## Native WebAuthn Types Support
 
 The library provides comprehensive support for standard WebAuthn types:

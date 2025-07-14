@@ -10,8 +10,9 @@
  */
 
 import { Injectable, inject } from '@angular/core';
+import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { Observable, from, throwError } from 'rxjs';
-import { map, catchError } from 'rxjs/operators';
+import { map, catchError, switchMap, timeout } from 'rxjs/operators';
 
 import {
   WebAuthnSupport,
@@ -22,6 +23,10 @@ import {
 } from '../model';
 
 import { RegisterInput, AuthenticateInput } from '../model';
+import {
+  RemoteRegistrationRequest,
+  RemoteAuthenticationRequest,
+} from '../model/remote-config';
 
 import { isRegisterConfig, isAuthenticateConfig } from '../utils/type-guards';
 
@@ -41,6 +46,9 @@ import {
   UnsupportedOperationError,
   SecurityError,
   TimeoutError,
+  RemoteEndpointError,
+  InvalidRemoteOptionsError,
+  RemoteErrorContext,
 } from '../errors/webauthn.errors';
 
 import { WEBAUTHN_CONFIG } from '../model/service-config';
@@ -54,6 +62,12 @@ import {
   isWebAuthnSupported,
 } from '../utils/webauthn.utils';
 
+// Import remote validation utilities
+import {
+  validateRemoteCreationOptions,
+  validateRemoteRequestOptions,
+} from '../utils/remote.utils';
+
 /**
  * Enhanced Angular service for WebAuthn operations
  * Provides a clean abstraction over the WebAuthn API with RxJS observables
@@ -64,6 +78,7 @@ import {
 })
 export class WebAuthnService {
   private readonly config = inject(WEBAUTHN_CONFIG);
+  private readonly http = inject(HttpClient);
 
   /**
    * Checks if WebAuthn is supported in the current browser environment.
@@ -308,6 +323,173 @@ export class WebAuthnService {
           )
       );
     }
+  }
+
+  /**
+   * Registers a new WebAuthn credential using options fetched from a remote server.
+   *
+   * Sends request data via POST to the configured registration endpoint,
+   * receives PublicKeyCredentialCreationOptionsJSON, then proceeds with
+   * standard WebAuthn registration flow.
+   *
+   * @param request Data to send to server (can be any object your server expects)
+   * @template T Type constraint for the request payload
+   * @returns Observable containing the registration response
+   *
+   * @throws {InvalidOptionsError} When remote registration endpoint is not configured
+   * @throws {RemoteEndpointError} When server request fails
+   * @throws {InvalidRemoteOptionsError} When server returns invalid options
+   *
+   * @example
+   * ```typescript
+   * // Simple request
+   * this.webAuthnService.registerRemote({
+   *   username: 'john.doe@example.com'
+   * }).subscribe(response => console.log('Success:', response));
+   *
+   * // Typed request with additional context
+   * interface ServerPayload {
+   *   tenantId: string;
+   *   department: string;
+   * }
+   *
+   * this.webAuthnService.registerRemote<ServerPayload>({
+   *   tenantId: 'acme-corp',
+   *   department: 'engineering'
+   * }).subscribe(response => console.log('Success:', response));
+   * ```
+   */
+  registerRemote<T extends Record<string, any> = Record<string, any>>(
+    request: RemoteRegistrationRequest<T>
+  ): Observable<RegistrationResponse> {
+    this.validateRemoteRegistrationConfig();
+
+    const endpoint = this.config.remoteEndpoints!.registration!;
+    const timeoutMs =
+      this.config.remoteEndpoints?.requestOptions?.timeout || 10000;
+
+    return this.http
+      .post<PublicKeyCredentialCreationOptionsJSON>(endpoint, request)
+      .pipe(
+        timeout(timeoutMs),
+        map((options) => {
+          validateRemoteCreationOptions(options);
+          return options;
+        }),
+        switchMap((options) => this.register(options)),
+        catchError((error) =>
+          this.handleRemoteError(error, endpoint, 'registration')
+        )
+      );
+  }
+
+  /**
+   * Authenticates using WebAuthn with options fetched from a remote server.
+   *
+   * Sends request data via POST to the configured authentication endpoint,
+   * receives PublicKeyCredentialRequestOptionsJSON, then proceeds with
+   * standard WebAuthn authentication flow.
+   *
+   * @param request Optional data to send to server (defaults to empty object)
+   * @template T Type constraint for the request payload
+   * @returns Observable containing the authentication response
+   *
+   * @throws {InvalidOptionsError} When remote authentication endpoint is not configured
+   * @throws {RemoteEndpointError} When server request fails
+   * @throws {InvalidRemoteOptionsError} When server returns invalid options
+   *
+   * @example
+   * ```typescript
+   * // Simple request
+   * this.webAuthnService.authenticateRemote({
+   *   username: 'john.doe@example.com'
+   * }).subscribe(response => console.log('Success:', response));
+   *
+   * // Request with no payload (server uses session/context)
+   * this.webAuthnService.authenticateRemote()
+   *   .subscribe(response => console.log('Success:', response));
+   * ```
+   */
+  authenticateRemote<T extends Record<string, any> = Record<string, any>>(
+    request: RemoteAuthenticationRequest<T> = {} as T
+  ): Observable<AuthenticationResponse> {
+    this.validateRemoteAuthenticationConfig();
+
+    const endpoint = this.config.remoteEndpoints!.authentication!;
+    const timeoutMs =
+      this.config.remoteEndpoints?.requestOptions?.timeout || 10000;
+
+    return this.http
+      .post<PublicKeyCredentialRequestOptionsJSON>(endpoint, request)
+      .pipe(
+        timeout(timeoutMs),
+        map((options) => {
+          validateRemoteRequestOptions(options);
+          return options;
+        }),
+        switchMap((options) => this.authenticate(options)),
+        catchError((error) =>
+          this.handleRemoteError(error, endpoint, 'authentication')
+        )
+      );
+  }
+
+  /**
+   * Validates that remote registration endpoint is configured
+   * @private
+   */
+  private validateRemoteRegistrationConfig(): void {
+    if (!this.config.remoteEndpoints?.registration) {
+      throw new InvalidOptionsError(
+        'Remote registration endpoint not configured. Add remoteEndpoints.registration to your WebAuthn config.'
+      );
+    }
+  }
+
+  /**
+   * Validates that remote authentication endpoint is configured
+   * @private
+   */
+  private validateRemoteAuthenticationConfig(): void {
+    if (!this.config.remoteEndpoints?.authentication) {
+      throw new InvalidOptionsError(
+        'Remote authentication endpoint not configured. Add remoteEndpoints.authentication to your WebAuthn config.'
+      );
+    }
+  }
+
+  /**
+   * Handles errors from remote HTTP requests
+   * @private
+   */
+  private handleRemoteError(
+    error: any,
+    url: string,
+    operation: 'registration' | 'authentication'
+  ): Observable<never> {
+    if (error instanceof HttpErrorResponse) {
+      const context: RemoteErrorContext = {
+        url,
+        method: 'POST',
+        operation,
+        status: error.status,
+        statusText: error.statusText,
+      };
+
+      return throwError(
+        () =>
+          new RemoteEndpointError(`${operation} request failed`, context, error)
+      );
+    }
+
+    return throwError(
+      () =>
+        new WebAuthnError(
+          WebAuthnErrorType.UNKNOWN,
+          `Unexpected error during remote ${operation}`,
+          error
+        )
+    );
   }
 
   /**

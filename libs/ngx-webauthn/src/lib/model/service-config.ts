@@ -63,6 +63,29 @@ export interface WebAuthnConfig {
    * Default authenticator selection criteria
    */
   defaultAuthenticatorSelection?: AuthenticatorSelectionCriteria;
+
+  /**
+   * Optional remote endpoints for fetching WebAuthn options from server
+   */
+  remoteEndpoints?: {
+    /**
+     * Absolute URL for fetching PublicKeyCredentialCreationOptionsJSON
+     * @example "https://api.example.com/webauthn/registration/options"
+     */
+    registration?: string;
+
+    /**
+     * Absolute URL for fetching PublicKeyCredentialRequestOptionsJSON
+     * @example "https://api.example.com/webauthn/authentication/options"
+     */
+    authentication?: string;
+
+    /** HTTP request configuration */
+    requestOptions?: {
+      /** Network timeout in milliseconds (separate from WebAuthn timeout) */
+      timeout?: number;
+    };
+  };
 }
 
 /**

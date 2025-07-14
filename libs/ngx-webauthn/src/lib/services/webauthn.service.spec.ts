@@ -1,4 +1,8 @@
 import { TestBed } from '@angular/core/testing';
+import {
+  HttpClientTestingModule,
+  HttpTestingController,
+} from '@angular/common/http/testing';
 import { WebAuthnService } from './webauthn.service';
 import { RegisterConfig, AuthenticateConfig } from '../model';
 import {
@@ -10,6 +14,8 @@ import {
   InvalidOptionsError,
   SecurityError,
   TimeoutError,
+  RemoteEndpointError,
+  InvalidRemoteOptionsError,
 } from '../errors/webauthn.errors';
 import {
   WEBAUTHN_CONFIG,
@@ -26,6 +32,7 @@ class MockPublicKeyCredential {
 
 describe('WebAuthnService', () => {
   let service: WebAuthnService;
+  let httpMock: HttpTestingController;
   let mockNavigator: any;
   let mockCredentials: any;
 
@@ -36,6 +43,7 @@ describe('WebAuthnService', () => {
 
   beforeEach(() => {
     TestBed.configureTestingModule({
+      imports: [HttpClientTestingModule],
       providers: [
         {
           provide: WEBAUTHN_CONFIG,
@@ -44,6 +52,7 @@ describe('WebAuthnService', () => {
       ],
     });
     service = TestBed.inject(WebAuthnService);
+    httpMock = TestBed.inject(HttpTestingController);
 
     // Mock navigator.credentials
     mockCredentials = {
@@ -943,6 +952,461 @@ describe('WebAuthnService', () => {
             done();
           },
           error: done,
+        });
+      });
+    });
+
+    describe('Remote Registration', () => {
+      describe('registerRemote', () => {
+        const mockCreationOptions: PublicKeyCredentialCreationOptionsJSON = {
+          rp: { name: 'Test App', id: 'test.example.com' },
+          user: {
+            id: 'dGVzdC11c2VyLWlk', // base64url encoded
+            name: 'test@example.com',
+            displayName: 'Test User',
+          },
+          challenge: 'Y2hhbGxlbmdlLWRhdGE', // base64url encoded
+          pubKeyCredParams: [{ type: 'public-key', alg: -7 }],
+          timeout: 60000,
+          attestation: 'none',
+        };
+
+        beforeEach(() => {
+          // Configure remote endpoints
+          const configWithRemote = createWebAuthnConfig(
+            { name: 'Test App', id: 'test.example.com' },
+            {
+              remoteEndpoints: {
+                registration:
+                  'https://api.example.com/webauthn/registration/options',
+                authentication:
+                  'https://api.example.com/webauthn/authentication/options',
+                requestOptions: { timeout: 10000 },
+              },
+            }
+          );
+
+          TestBed.resetTestingModule();
+          TestBed.configureTestingModule({
+            imports: [HttpClientTestingModule],
+            providers: [
+              {
+                provide: WEBAUTHN_CONFIG,
+                useValue: configWithRemote,
+              },
+            ],
+          });
+          service = TestBed.inject(WebAuthnService);
+          httpMock = TestBed.inject(HttpTestingController);
+        });
+
+        afterEach(() => {
+          httpMock.verify();
+        });
+
+        it('should fetch options from server and register successfully', (done) => {
+          const mockCredential = new MockPublicKeyCredential(
+            new ArrayBuffer(32),
+            {
+              attestationObject: new ArrayBuffer(64),
+              clientDataJSON: new ArrayBuffer(64),
+              getPublicKey: () => new ArrayBuffer(64),
+              getTransports: () => ['usb'],
+            }
+          );
+
+          mockCredentials.create.mockResolvedValue(mockCredential);
+
+          const requestPayload = { username: 'test@example.com' };
+
+          service.registerRemote(requestPayload).subscribe({
+            next: (result) => {
+              expect(result.success).toBe(true);
+              expect(typeof result.credentialId).toBe('string');
+              done();
+            },
+            error: done,
+          });
+
+          // Expect HTTP request to be made
+          const req = httpMock.expectOne(
+            'https://api.example.com/webauthn/registration/options'
+          );
+          expect(req.request.method).toBe('POST');
+          expect(req.request.body).toEqual(requestPayload);
+
+          // Respond with mock options
+          req.flush(mockCreationOptions);
+        });
+
+        it('should send request payload as JSON body', (done) => {
+          const customPayload = {
+            username: 'test@example.com',
+            tenantId: 'acme-corp',
+            context: 'mobile',
+          };
+
+          const mockCredential = new MockPublicKeyCredential(
+            new ArrayBuffer(32),
+            {
+              attestationObject: new ArrayBuffer(64),
+              clientDataJSON: new ArrayBuffer(64),
+              getPublicKey: () => new ArrayBuffer(64),
+              getTransports: () => ['usb'],
+            }
+          );
+
+          mockCredentials.create.mockResolvedValue(mockCredential);
+
+          service.registerRemote(customPayload).subscribe({
+            next: () => done(),
+            error: done,
+          });
+
+          const req = httpMock.expectOne(
+            'https://api.example.com/webauthn/registration/options'
+          );
+          expect(req.request.body).toEqual(customPayload);
+          req.flush(mockCreationOptions);
+        });
+
+        it('should validate server response before proceeding', (done) => {
+          const invalidResponse = { invalid: 'response' };
+
+          service.registerRemote({ username: 'test@example.com' }).subscribe({
+            next: () => done(new Error('Should not succeed')),
+            error: (error) => {
+              expect(error).toBeInstanceOf(InvalidRemoteOptionsError);
+              expect(error.message).toContain('Response must be an object');
+              done();
+            },
+          });
+
+          const req = httpMock.expectOne(
+            'https://api.example.com/webauthn/registration/options'
+          );
+          req.flush(invalidResponse);
+        });
+
+        it('should throw InvalidOptionsError when endpoint not configured', (done) => {
+          // Reset to config without remote endpoints
+          TestBed.resetTestingModule();
+          TestBed.configureTestingModule({
+            imports: [HttpClientTestingModule],
+            providers: [
+              {
+                provide: WEBAUTHN_CONFIG,
+                useValue: testConfig, // Original config without remote endpoints
+              },
+            ],
+          });
+          service = TestBed.inject(WebAuthnService);
+          httpMock = TestBed.inject(HttpTestingController);
+
+          service.registerRemote({ username: 'test@example.com' }).subscribe({
+            next: () => done(new Error('Should not succeed')),
+            error: (error) => {
+              expect(error).toBeInstanceOf(InvalidOptionsError);
+              expect(error.message).toContain(
+                'Remote registration endpoint not configured'
+              );
+              done();
+            },
+          });
+        });
+
+        it('should handle HTTP 404 errors', (done) => {
+          service.registerRemote({ username: 'test@example.com' }).subscribe({
+            next: () => done(new Error('Should not succeed')),
+            error: (error) => {
+              expect(error).toBeInstanceOf(RemoteEndpointError);
+              expect(error.context.status).toBe(404);
+              expect(error.context.operation).toBe('registration');
+              done();
+            },
+          });
+
+          const req = httpMock.expectOne(
+            'https://api.example.com/webauthn/registration/options'
+          );
+          req.flush('Not Found', { status: 404, statusText: 'Not Found' });
+        });
+
+        it('should handle HTTP 500 errors', (done) => {
+          service.registerRemote({ username: 'test@example.com' }).subscribe({
+            next: () => done(new Error('Should not succeed')),
+            error: (error) => {
+              expect(error).toBeInstanceOf(RemoteEndpointError);
+              expect(error.context.status).toBe(500);
+              expect(error.context.operation).toBe('registration');
+              done();
+            },
+          });
+
+          const req = httpMock.expectOne(
+            'https://api.example.com/webauthn/registration/options'
+          );
+          req.flush('Internal Server Error', {
+            status: 500,
+            statusText: 'Internal Server Error',
+          });
+        });
+
+        it('should handle malformed JSON responses', (done) => {
+          service.registerRemote({ username: 'test@example.com' }).subscribe({
+            next: () => done(new Error('Should not succeed')),
+            error: (error) => {
+              expect(error).toBeInstanceOf(InvalidRemoteOptionsError);
+              done();
+            },
+          });
+
+          const req = httpMock.expectOne(
+            'https://api.example.com/webauthn/registration/options'
+          );
+          req.flush('not valid json');
+        });
+
+        it('should work with empty request payload', (done) => {
+          const mockCredential = new MockPublicKeyCredential(
+            new ArrayBuffer(32),
+            {
+              attestationObject: new ArrayBuffer(64),
+              clientDataJSON: new ArrayBuffer(64),
+              getPublicKey: () => new ArrayBuffer(64),
+              getTransports: () => ['usb'],
+            }
+          );
+
+          mockCredentials.create.mockResolvedValue(mockCredential);
+
+          service.registerRemote({}).subscribe({
+            next: (result) => {
+              expect(result.success).toBe(true);
+              done();
+            },
+            error: done,
+          });
+
+          const req = httpMock.expectOne(
+            'https://api.example.com/webauthn/registration/options'
+          );
+          expect(req.request.body).toEqual({});
+          req.flush(mockCreationOptions);
+        });
+      });
+    });
+
+    describe('Remote Authentication', () => {
+      describe('authenticateRemote', () => {
+        const mockRequestOptions: PublicKeyCredentialRequestOptionsJSON = {
+          challenge: 'Y2hhbGxlbmdlLWRhdGE', // base64url encoded
+          timeout: 60000,
+          userVerification: 'preferred',
+          allowCredentials: [
+            {
+              type: 'public-key',
+              id: 'Y3JlZGVudGlhbC1pZA', // base64url encoded
+              transports: ['usb'],
+            },
+          ],
+        };
+
+        beforeEach(() => {
+          // Configure remote endpoints
+          const configWithRemote = createWebAuthnConfig(
+            { name: 'Test App', id: 'test.example.com' },
+            {
+              remoteEndpoints: {
+                registration:
+                  'https://api.example.com/webauthn/registration/options',
+                authentication:
+                  'https://api.example.com/webauthn/authentication/options',
+                requestOptions: { timeout: 10000 },
+              },
+            }
+          );
+
+          TestBed.resetTestingModule();
+          TestBed.configureTestingModule({
+            imports: [HttpClientTestingModule],
+            providers: [
+              {
+                provide: WEBAUTHN_CONFIG,
+                useValue: configWithRemote,
+              },
+            ],
+          });
+          service = TestBed.inject(WebAuthnService);
+          httpMock = TestBed.inject(HttpTestingController);
+        });
+
+        afterEach(() => {
+          httpMock.verify();
+        });
+
+        it('should fetch options from server and authenticate successfully', (done) => {
+          const mockCredential = new MockPublicKeyCredential(
+            new ArrayBuffer(32),
+            {
+              authenticatorData: new ArrayBuffer(64),
+              clientDataJSON: new ArrayBuffer(64),
+              signature: new ArrayBuffer(64),
+              userHandle: new ArrayBuffer(16),
+            }
+          );
+
+          mockCredentials.get.mockResolvedValue(mockCredential);
+
+          const requestPayload = { username: 'test@example.com' };
+
+          service.authenticateRemote(requestPayload).subscribe({
+            next: (result) => {
+              expect(result.success).toBe(true);
+              expect(typeof result.credentialId).toBe('string');
+              done();
+            },
+            error: done,
+          });
+
+          // Expect HTTP request to be made
+          const req = httpMock.expectOne(
+            'https://api.example.com/webauthn/authentication/options'
+          );
+          expect(req.request.method).toBe('POST');
+          expect(req.request.body).toEqual(requestPayload);
+
+          // Respond with mock options
+          req.flush(mockRequestOptions);
+        });
+
+        it('should work with no request payload', (done) => {
+          const mockCredential = new MockPublicKeyCredential(
+            new ArrayBuffer(32),
+            {
+              authenticatorData: new ArrayBuffer(64),
+              clientDataJSON: new ArrayBuffer(64),
+              signature: new ArrayBuffer(64),
+              userHandle: new ArrayBuffer(16),
+            }
+          );
+
+          mockCredentials.get.mockResolvedValue(mockCredential);
+
+          service.authenticateRemote().subscribe({
+            next: (result) => {
+              expect(result.success).toBe(true);
+              done();
+            },
+            error: done,
+          });
+
+          const req = httpMock.expectOne(
+            'https://api.example.com/webauthn/authentication/options'
+          );
+          expect(req.request.body).toEqual({});
+          req.flush(mockRequestOptions);
+        });
+
+        it('should validate server response before proceeding', (done) => {
+          const invalidResponse = { invalid: 'response' };
+
+          service
+            .authenticateRemote({ username: 'test@example.com' })
+            .subscribe({
+              next: () => done(new Error('Should not succeed')),
+              error: (error) => {
+                expect(error).toBeInstanceOf(InvalidRemoteOptionsError);
+                expect(error.message).toContain('Response must be an object');
+                done();
+              },
+            });
+
+          const req = httpMock.expectOne(
+            'https://api.example.com/webauthn/authentication/options'
+          );
+          req.flush(invalidResponse);
+        });
+
+        it('should throw InvalidOptionsError when endpoint not configured', (done) => {
+          // Reset to config without remote endpoints
+          TestBed.resetTestingModule();
+          TestBed.configureTestingModule({
+            imports: [HttpClientTestingModule],
+            providers: [
+              {
+                provide: WEBAUTHN_CONFIG,
+                useValue: testConfig, // Original config without remote endpoints
+              },
+            ],
+          });
+          service = TestBed.inject(WebAuthnService);
+          httpMock = TestBed.inject(HttpTestingController);
+
+          service
+            .authenticateRemote({ username: 'test@example.com' })
+            .subscribe({
+              next: () => done(new Error('Should not succeed')),
+              error: (error) => {
+                expect(error).toBeInstanceOf(InvalidOptionsError);
+                expect(error.message).toContain(
+                  'Remote authentication endpoint not configured'
+                );
+                done();
+              },
+            });
+        });
+
+        it('should handle HTTP error scenarios', (done) => {
+          service
+            .authenticateRemote({ username: 'test@example.com' })
+            .subscribe({
+              next: () => done(new Error('Should not succeed')),
+              error: (error) => {
+                expect(error).toBeInstanceOf(RemoteEndpointError);
+                expect(error.context.status).toBe(401);
+                expect(error.context.operation).toBe('authentication');
+                done();
+              },
+            });
+
+          const req = httpMock.expectOne(
+            'https://api.example.com/webauthn/authentication/options'
+          );
+          req.flush('Unauthorized', {
+            status: 401,
+            statusText: 'Unauthorized',
+          });
+        });
+
+        it('should work with custom request payload', (done) => {
+          const customPayload = {
+            sessionId: 'abc123',
+            context: 'mobile',
+          };
+
+          const mockCredential = new MockPublicKeyCredential(
+            new ArrayBuffer(32),
+            {
+              authenticatorData: new ArrayBuffer(64),
+              clientDataJSON: new ArrayBuffer(64),
+              signature: new ArrayBuffer(64),
+              userHandle: new ArrayBuffer(16),
+            }
+          );
+
+          mockCredentials.get.mockResolvedValue(mockCredential);
+
+          service.authenticateRemote(customPayload).subscribe({
+            next: () => done(),
+            error: done,
+          });
+
+          const req = httpMock.expectOne(
+            'https://api.example.com/webauthn/authentication/options'
+          );
+          expect(req.request.body).toEqual(customPayload);
+          req.flush(mockRequestOptions);
         });
       });
     });

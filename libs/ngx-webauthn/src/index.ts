@@ -31,6 +31,8 @@ export type {
   FlexibleUserId,
   FlexibleChallenge,
   FlexibleCredentialDescriptors,
+  RemoteRegistrationRequest,
+  RemoteAuthenticationRequest,
 } from './lib/model';
 
 // Error types for enhanced error handling
@@ -44,7 +46,12 @@ export {
   SecurityError,
   TimeoutError,
   NetworkError,
+  RemoteEndpointError,
+  InvalidRemoteOptionsError,
 } from './lib/errors/webauthn.errors';
+
+// Remote error context type
+export type { RemoteErrorContext } from './lib/errors/webauthn.errors';
 
 // Utility functions
 export {
@@ -66,6 +73,12 @@ export {
   isJSONOptions,
   isPublicKeyCredential,
 } from './lib/utils/webauthn.utils';
+
+// Remote validation utilities
+export {
+  validateRemoteCreationOptions,
+  validateRemoteRequestOptions,
+} from './lib/utils/remote.utils';
 
 // Type guards
 export {

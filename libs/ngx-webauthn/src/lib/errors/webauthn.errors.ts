@@ -16,6 +16,8 @@ export enum WebAuthnErrorType {
   NETWORK_ERROR = 'NETWORK_ERROR',
   SECURITY_ERROR = 'SECURITY_ERROR',
   TIMEOUT_ERROR = 'TIMEOUT_ERROR',
+  REMOTE_ENDPOINT_ERROR = 'REMOTE_ENDPOINT_ERROR',
+  INVALID_REMOTE_OPTIONS = 'INVALID_REMOTE_OPTIONS',
   UNKNOWN = 'UNKNOWN',
 }
 
@@ -325,5 +327,87 @@ export class TimeoutError extends WebAuthnError {
       originalError
     );
     this.name = 'TimeoutError';
+  }
+}
+
+/**
+ * Context information for remote endpoint errors (security-conscious)
+ */
+export interface RemoteErrorContext {
+  readonly url: string;
+  readonly method: string;
+  readonly operation: 'registration' | 'authentication';
+  readonly status?: number;
+  readonly statusText?: string;
+  // Intentionally excludes request/response bodies for security
+}
+
+/**
+ * Error thrown when remote endpoint request fails.
+ * Includes network errors, HTTP errors, and timeout errors.
+ *
+ * @example
+ * ```typescript
+ * try {
+ *   await webAuthnService.registerRemote(request);
+ * } catch (error) {
+ *   if (error instanceof RemoteEndpointError) {
+ *     console.log('Endpoint:', error.context.url);
+ *     console.log('Status:', error.context.status);
+ *   }
+ * }
+ * ```
+ */
+export class RemoteEndpointError extends WebAuthnError {
+  /**
+   * Creates a new RemoteEndpointError.
+   *
+   * @param message Descriptive error message about the remote endpoint failure
+   * @param context Contextual information about the failed request
+   * @param originalError The original error that caused this remote endpoint error (optional)
+   */
+  constructor(
+    message: string,
+    public readonly context: RemoteErrorContext,
+    originalError?: Error
+  ) {
+    super(
+      WebAuthnErrorType.REMOTE_ENDPOINT_ERROR,
+      `Remote endpoint error: ${message}`,
+      originalError
+    );
+    this.name = 'RemoteEndpointError';
+  }
+}
+
+/**
+ * Error thrown when remote server returns invalid WebAuthn options.
+ * This indicates the server response doesn't match expected WebAuthn option format.
+ *
+ * @example
+ * ```typescript
+ * try {
+ *   await webAuthnService.registerRemote(request);
+ * } catch (error) {
+ *   if (error instanceof InvalidRemoteOptionsError) {
+ *     console.log('Invalid server response:', error.message);
+ *   }
+ * }
+ * ```
+ */
+export class InvalidRemoteOptionsError extends WebAuthnError {
+  /**
+   * Creates a new InvalidRemoteOptionsError.
+   *
+   * @param message Descriptive error message about the invalid remote options
+   * @param originalError The original error that revealed the invalid options (optional)
+   */
+  constructor(message: string, originalError?: Error) {
+    super(
+      WebAuthnErrorType.INVALID_REMOTE_OPTIONS,
+      `Invalid remote options: ${message}`,
+      originalError
+    );
+    this.name = 'InvalidRemoteOptionsError';
   }
 }

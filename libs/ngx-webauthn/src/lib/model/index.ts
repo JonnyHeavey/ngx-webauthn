@@ -26,6 +26,12 @@ export type {
   AuthenticateInput,
 } from './operation-config';
 
+// Remote configuration
+export type {
+  RemoteRegistrationRequest,
+  RemoteAuthenticationRequest,
+} from './remote-config';
+
 // Response interfaces (includes both raw and enhanced responses)
 export type {
   WebAuthnRegistrationResult,
