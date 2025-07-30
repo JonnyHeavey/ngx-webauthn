@@ -61,7 +61,6 @@ export {
   base64ToArrayBuffer,
   stringToArrayBuffer,
   arrayBufferToString,
-  generateChallenge,
   generateUserId,
   credentialIdToArrayBuffer,
   arrayBufferToCredentialId,
