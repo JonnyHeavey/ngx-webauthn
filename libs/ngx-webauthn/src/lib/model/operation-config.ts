@@ -24,7 +24,7 @@ export type EnhancedRelyingParty = PublicKeyCredentialRpEntity;
 export type FlexibleUserId = string | Uint8Array;
 
 /**
- * Flexible challenge that can be a string or Uint8Array
+ * Flexible challenge that can be a base64url string or Uint8Array
  * Provides better DX while maintaining compatibility with WebAuthn standards
  */
 export type FlexibleChallenge = string | Uint8Array;

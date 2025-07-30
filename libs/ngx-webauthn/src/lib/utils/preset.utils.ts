@@ -71,12 +71,11 @@ function generateUserId(username: string): Uint8Array {
 
 /**
  * Processes and normalizes challenge values from various input formats.
- * Handles string (base64url) or Uint8Array. Challenges must be provided by the server.
+ * String challenges must be base64url encoded (WebAuthn spec compliance).
  *
- * @param challenge Challenge as string or Uint8Array (required)
+ * @param challenge Challenge as base64url string or Uint8Array (required)
  * @returns Normalized Uint8Array challenge ready for WebAuthn API
- * @throws {Error} When no challenge is provided
- * @throws {Error} When provided string challenge is not valid base64url
+ * @throws {Error} When challenge is missing or invalid base64url
  */
 function processChallenge(challenge?: string | Uint8Array): Uint8Array {
   if (!challenge) {
@@ -88,24 +87,18 @@ function processChallenge(challenge?: string | Uint8Array): Uint8Array {
   }
 
   if (typeof challenge === 'string') {
-    // Try to detect if string is base64url encoded or plain text
-    // Base64url only contains A-Z, a-z, 0-9, -, _
-    const base64urlPattern = /^[A-Za-z0-9_-]+$/;
-
-    if (base64urlPattern.test(challenge) && challenge.length > 20) {
-      try {
-        // Likely base64url string, try to convert
-        return Uint8Array.from(
-          atob(challenge.replace(/-/g, '+').replace(/_/g, '/')),
-          (c) => c.charCodeAt(0)
-        );
-      } catch (error) {
-        // Fall back to UTF-8 encoding
-        return new TextEncoder().encode(challenge);
-      }
-    } else {
-      // Plain text string, encode as UTF-8
-      return new TextEncoder().encode(challenge);
+    // String challenges must be base64url encoded (WebAuthn spec requirement)
+    try {
+      return Uint8Array.from(
+        atob(challenge.replace(/-/g, '+').replace(/_/g, '/')),
+        (c) => c.charCodeAt(0)
+      );
+    } catch (error) {
+      throw new Error(
+        'Invalid challenge format. String challenges must be base64url encoded. ' +
+          'Received challenge is not valid base64url: ' +
+          String(error)
+      );
     }
   }
 
