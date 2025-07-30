@@ -38,6 +38,7 @@ export const appConfig: ApplicationConfig = {
     provideZoneChangeDetection({ eventCoalescing: true }),
     provideRouter(appRoutes),
     provideAnimationsAsync(),
+    provideHttpClient(withFetch()),
     provideWebAuthn(
       {
         // Required: Human-readable name for your application
