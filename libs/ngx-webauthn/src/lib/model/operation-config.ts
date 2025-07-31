@@ -24,7 +24,7 @@ export type EnhancedRelyingParty = PublicKeyCredentialRpEntity;
 export type FlexibleUserId = string | Uint8Array;
 
 /**
- * Flexible challenge that can be a string or Uint8Array
+ * Flexible challenge that can be a base64url string or Uint8Array
  * Provides better DX while maintaining compatibility with WebAuthn standards
  */
 export type FlexibleChallenge = string | Uint8Array;
@@ -82,11 +82,11 @@ export interface RegisterConfig
   rp?: EnhancedRelyingParty;
 
   /**
-   * Challenge for the registration (optional override)
-   * If not provided, a secure random challenge will be generated
+   * Challenge for the registration (required)
+   * Must be provided by the server for security
    * Can be either base64url string or Uint8Array for better DX
    */
-  challenge?: FlexibleChallenge;
+  challenge: FlexibleChallenge;
 
   /**
    * Credentials to exclude from registration (optional override)
@@ -133,11 +133,11 @@ export interface AuthenticateConfig
   preset?: PresetName;
 
   /**
-   * Challenge for the authentication (optional override)
-   * If not provided, a secure random challenge will be generated
+   * Challenge for the authentication (required)
+   * Must be provided by the server for security
    * Can be either base64url string or Uint8Array for better DX
    */
-  challenge?: FlexibleChallenge;
+  challenge: FlexibleChallenge;
 
   /**
    * Specific credentials to allow for authentication (optional override)

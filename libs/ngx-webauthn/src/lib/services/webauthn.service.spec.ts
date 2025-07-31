@@ -260,6 +260,7 @@ describe('WebAuthnService', () => {
       username: 'testuser',
       displayName: 'Test User',
       preset: 'passkey',
+      challenge: new Uint8Array([1, 2, 3, 4, 5]),
       rp: {
         name: 'Test App',
         id: 'example.com',
@@ -595,6 +596,7 @@ describe('WebAuthnService', () => {
   describe('authenticate', () => {
     const mockAuthenticateConfig: AuthenticateConfig = {
       preset: 'passkey',
+      challenge: new Uint8Array([5, 6, 7, 8]),
     };
 
     const mockRequestOptions: PublicKeyCredentialRequestOptions = {
@@ -790,7 +792,12 @@ describe('WebAuthnService', () => {
       mockCredentials.create.mockResolvedValue(mockCredential);
 
       service
-        .register({ username: 'test', preset: 'passkey', rp: { name: 'Test' } })
+        .register({
+          username: 'test',
+          preset: 'passkey',
+          rp: { name: 'Test' },
+          challenge: new Uint8Array([1, 2, 3, 4]),
+        })
         .subscribe({
           next: (response) => {
             // FIXED: Registration should succeed even when public key extraction fails
@@ -824,7 +831,12 @@ describe('WebAuthnService', () => {
       mockCredentials.create.mockResolvedValue(mockCredential);
 
       service
-        .register({ username: 'test', preset: 'passkey', rp: { name: 'Test' } })
+        .register({
+          username: 'test',
+          preset: 'passkey',
+          rp: { name: 'Test' },
+          challenge: new Uint8Array([5, 6, 7, 8]),
+        })
         .subscribe({
           next: (result) => {
             expect(result.credentialId).toBe('SGVsbA'); // Base64url for 'Hell'
@@ -850,42 +862,59 @@ describe('WebAuthnService', () => {
 
     describe('passkey preset', () => {
       it('should apply passkey preset configuration for registration', (done) => {
-        service.register({ username: 'test', preset: 'passkey' }).subscribe({
-          next: () => {
-            const createCall = mockCredentials.create.mock.calls[0][0];
-            const options = createCall.publicKey;
+        service
+          .register({
+            username: 'test',
+            preset: 'passkey',
+            challenge: new Uint8Array([9, 10, 11, 12]),
+          })
+          .subscribe({
+            next: () => {
+              const createCall = mockCredentials.create.mock.calls[0][0];
+              const options = createCall.publicKey;
 
-            expect(options.authenticatorSelection.residentKey).toBe('required');
-            expect(options.authenticatorSelection.userVerification).toBe(
-              'preferred'
-            );
-            expect(
-              options.authenticatorSelection.authenticatorAttachment
-            ).toBeUndefined();
-            done();
-          },
-          error: done,
-        });
+              expect(options.authenticatorSelection.residentKey).toBe(
+                'required'
+              );
+              expect(options.authenticatorSelection.userVerification).toBe(
+                'preferred'
+              );
+              expect(
+                options.authenticatorSelection.authenticatorAttachment
+              ).toBeUndefined();
+              done();
+            },
+            error: done,
+          });
       });
 
       it('should apply passkey preset configuration for authentication', (done) => {
-        service.authenticate({ preset: 'passkey' }).subscribe({
-          next: () => {
-            const getCall = mockCredentials.get.mock.calls[0][0];
-            const options = getCall.publicKey;
+        service
+          .authenticate({
+            preset: 'passkey',
+            challenge: new Uint8Array([13, 14, 15, 16]),
+          })
+          .subscribe({
+            next: () => {
+              const getCall = mockCredentials.get.mock.calls[0][0];
+              const options = getCall.publicKey;
 
-            expect(options.userVerification).toBe('preferred');
-            done();
-          },
-          error: done,
-        });
+              expect(options.userVerification).toBe('preferred');
+              done();
+            },
+            error: done,
+          });
       });
     });
 
     describe('externalSecurityKey preset', () => {
       it('should apply externalSecurityKey preset configuration for registration', (done) => {
         service
-          .register({ username: 'test', preset: 'externalSecurityKey' })
+          .register({
+            username: 'test',
+            preset: 'externalSecurityKey',
+            challenge: new Uint8Array([17, 18, 19, 20]),
+          })
           .subscribe({
             next: () => {
               const createCall = mockCredentials.create.mock.calls[0][0];
@@ -907,23 +936,32 @@ describe('WebAuthnService', () => {
       });
 
       it('should apply externalSecurityKey preset configuration for authentication', (done) => {
-        service.authenticate({ preset: 'externalSecurityKey' }).subscribe({
-          next: () => {
-            const getCall = mockCredentials.get.mock.calls[0][0];
-            const options = getCall.publicKey;
+        service
+          .authenticate({
+            preset: 'externalSecurityKey',
+            challenge: new Uint8Array([21, 22, 23, 24]),
+          })
+          .subscribe({
+            next: () => {
+              const getCall = mockCredentials.get.mock.calls[0][0];
+              const options = getCall.publicKey;
 
-            expect(options.userVerification).toBe('preferred');
-            done();
-          },
-          error: done,
-        });
+              expect(options.userVerification).toBe('preferred');
+              done();
+            },
+            error: done,
+          });
       });
     });
 
     describe('platformAuthenticator preset', () => {
       it('should apply platformAuthenticator preset configuration for registration', (done) => {
         service
-          .register({ username: 'test', preset: 'platformAuthenticator' })
+          .register({
+            username: 'test',
+            preset: 'platformAuthenticator',
+            challenge: new Uint8Array([25, 26, 27, 28]),
+          })
           .subscribe({
             next: () => {
               const createCall = mockCredentials.create.mock.calls[0][0];
@@ -945,16 +983,21 @@ describe('WebAuthnService', () => {
       });
 
       it('should apply platformAuthenticator preset configuration for authentication', (done) => {
-        service.authenticate({ preset: 'platformAuthenticator' }).subscribe({
-          next: () => {
-            const getCall = mockCredentials.get.mock.calls[0][0];
-            const options = getCall.publicKey;
+        service
+          .authenticate({
+            preset: 'platformAuthenticator',
+            challenge: new Uint8Array([29, 30, 31, 32]),
+          })
+          .subscribe({
+            next: () => {
+              const getCall = mockCredentials.get.mock.calls[0][0];
+              const options = getCall.publicKey;
 
-            expect(options.userVerification).toBe('required');
-            done();
-          },
-          error: done,
-        });
+              expect(options.userVerification).toBe('required');
+              done();
+            },
+            error: done,
+          });
       });
     });
 
@@ -1442,14 +1485,19 @@ describe('WebAuthnService', () => {
       });
       const customService = TestBed.inject(WebAuthnService);
 
-      customService.register({ username: 'test' }).subscribe({
-        next: () => {
-          const createCall = mockCredentials.create.mock.calls[0][0];
-          expect(createCall.publicKey.timeout).toBe(45000);
-          done();
-        },
-        error: done,
-      });
+      customService
+        .register({
+          username: 'test',
+          challenge: new Uint8Array([33, 34, 35, 36]),
+        })
+        .subscribe({
+          next: () => {
+            const createCall = mockCredentials.create.mock.calls[0][0];
+            expect(createCall.publicKey.timeout).toBe(45000);
+            done();
+          },
+          error: done,
+        });
     });
 
     it('should use defaultAlgorithms from config when no preset specified', (done) => {
@@ -1475,16 +1523,21 @@ describe('WebAuthnService', () => {
       });
       const customService = TestBed.inject(WebAuthnService);
 
-      customService.register({ username: 'test' }).subscribe({
-        next: () => {
-          const createCall = mockCredentials.create.mock.calls[0][0];
-          expect(createCall.publicKey.pubKeyCredParams).toEqual(
-            customAlgorithms
-          );
-          done();
-        },
-        error: done,
-      });
+      customService
+        .register({
+          username: 'test',
+          challenge: new Uint8Array([33, 34, 35, 36]),
+        })
+        .subscribe({
+          next: () => {
+            const createCall = mockCredentials.create.mock.calls[0][0];
+            expect(createCall.publicKey.pubKeyCredParams).toEqual(
+              customAlgorithms
+            );
+            done();
+          },
+          error: done,
+        });
     });
 
     it('should enforce user verification when enforceUserVerification is true', (done) => {
@@ -1507,14 +1560,19 @@ describe('WebAuthnService', () => {
       const customService = TestBed.inject(WebAuthnService);
 
       // Use config without preset to test service-level enforceUserVerification
-      customService.authenticate({ username: 'test' }).subscribe({
-        next: () => {
-          const getCall = mockCredentials.get.mock.calls[0][0];
-          expect(getCall.publicKey.userVerification).toBe('required');
-          done();
-        },
-        error: done,
-      });
+      customService
+        .authenticate({
+          username: 'test',
+          challenge: new Uint8Array([37, 38, 39, 40]),
+        })
+        .subscribe({
+          next: () => {
+            const getCall = mockCredentials.get.mock.calls[0][0];
+            expect(getCall.publicKey.userVerification).toBe('required');
+            done();
+          },
+          error: done,
+        });
     });
 
     it('should use defaultAttestation from config', (done) => {
@@ -1536,14 +1594,19 @@ describe('WebAuthnService', () => {
       });
       const customService = TestBed.inject(WebAuthnService);
 
-      customService.register({ username: 'test' }).subscribe({
-        next: () => {
-          const createCall = mockCredentials.create.mock.calls[0][0];
-          expect(createCall.publicKey.attestation).toBe('direct');
-          done();
-        },
-        error: done,
-      });
+      customService
+        .register({
+          username: 'test',
+          challenge: new Uint8Array([33, 34, 35, 36]),
+        })
+        .subscribe({
+          next: () => {
+            const createCall = mockCredentials.create.mock.calls[0][0];
+            expect(createCall.publicKey.attestation).toBe('direct');
+            done();
+          },
+          error: done,
+        });
     });
 
     it('should use defaultAuthenticatorSelection from config when no preset', (done) => {
@@ -1570,19 +1633,25 @@ describe('WebAuthnService', () => {
       });
       const customService = TestBed.inject(WebAuthnService);
 
-      customService.register({ username: 'test' }).subscribe({
-        next: () => {
-          const createCall = mockCredentials.create.mock.calls[0][0];
-          expect(
-            createCall.publicKey.authenticatorSelection.authenticatorAttachment
-          ).toBe('platform');
-          expect(
-            createCall.publicKey.authenticatorSelection.userVerification
-          ).toBe('required');
-          done();
-        },
-        error: done,
-      });
+      customService
+        .register({
+          username: 'test',
+          challenge: new Uint8Array([33, 34, 35, 36]),
+        })
+        .subscribe({
+          next: () => {
+            const createCall = mockCredentials.create.mock.calls[0][0];
+            expect(
+              createCall.publicKey.authenticatorSelection
+                .authenticatorAttachment
+            ).toBe('platform');
+            expect(
+              createCall.publicKey.authenticatorSelection.userVerification
+            ).toBe('required');
+            done();
+          },
+          error: done,
+        });
     });
 
     afterEach(() => {
@@ -1622,6 +1691,7 @@ describe('WebAuthnService', () => {
         .register({
           username: 'test',
           preset: 'passkey',
+          challenge: new Uint8Array([41, 42, 43, 44]),
           timeout: 30000,
         })
         .subscribe({
@@ -1639,6 +1709,7 @@ describe('WebAuthnService', () => {
         .register({
           username: 'test',
           preset: 'externalSecurityKey', // normally cross-platform
+          challenge: new Uint8Array([45, 46, 47, 48]),
           authenticatorSelection: {
             authenticatorAttachment: 'platform', // override to platform
           },
@@ -1664,6 +1735,7 @@ describe('WebAuthnService', () => {
       service
         .authenticate({
           preset: 'passkey', // normally 'preferred'
+          challenge: new Uint8Array([49, 50, 51, 52]),
           userVerification: 'required', // override to required
         })
         .subscribe({
@@ -1683,6 +1755,7 @@ describe('WebAuthnService', () => {
         .register({
           username: 'test',
           preset: 'passkey',
+          challenge: new Uint8Array([53, 54, 55, 56]),
           pubKeyCredParams: customAlgorithms,
         })
         .subscribe({
@@ -1701,6 +1774,7 @@ describe('WebAuthnService', () => {
       service
         .register({
           username: 'test',
+          challenge: new Uint8Array([57, 58, 59, 60]),
           attestation: 'enterprise',
         })
         .subscribe({
@@ -1779,7 +1853,7 @@ describe('WebAuthnService', () => {
     });
   });
 
-  describe('challenge generation', () => {
+  describe('challenge validation', () => {
     const mockCredential = new MockPublicKeyCredential(new ArrayBuffer(32), {
       attestationObject: new ArrayBuffer(64),
       clientDataJSON: new ArrayBuffer(64),
@@ -1792,27 +1866,33 @@ describe('WebAuthnService', () => {
       mockCredentials.get.mockResolvedValue(mockCredential);
     });
 
-    it('should generate challenge automatically when not provided in RegisterConfig', (done) => {
-      service.register({ username: 'test', preset: 'passkey' }).subscribe({
-        next: () => {
-          const createCall = mockCredentials.create.mock.calls[0][0];
-          expect(createCall.publicKey.challenge).toBeInstanceOf(Uint8Array);
-          expect(createCall.publicKey.challenge.length).toBeGreaterThan(0);
-          done();
-        },
-        error: done,
-      });
+    it('should throw error when no challenge provided in RegisterConfig', (done) => {
+      // TypeScript should prevent this, but test runtime behavior
+      service
+        .register({ username: 'test', preset: 'passkey' } as any)
+        .subscribe({
+          next: () => done(new Error('Should not succeed')),
+          error: (error) => {
+            expect(error).toBeInstanceOf(InvalidOptionsError);
+            expect(error.message).toContain(
+              'Failed to process registration input'
+            );
+            done();
+          },
+        });
     });
 
-    it('should generate challenge automatically when not provided in AuthenticateConfig', (done) => {
-      service.authenticate({ preset: 'passkey' }).subscribe({
-        next: () => {
-          const getCall = mockCredentials.get.mock.calls[0][0];
-          expect(getCall.publicKey.challenge).toBeInstanceOf(Uint8Array);
-          expect(getCall.publicKey.challenge.length).toBeGreaterThan(0);
+    it('should throw error when no challenge provided in AuthenticateConfig', (done) => {
+      // TypeScript should prevent this, but test runtime behavior
+      service.authenticate({ preset: 'passkey' } as any).subscribe({
+        next: () => done(new Error('Should not succeed')),
+        error: (error) => {
+          expect(error).toBeInstanceOf(InvalidOptionsError);
+          expect(error.message).toContain(
+            'Failed to process authentication input'
+          );
           done();
         },
-        error: done,
       });
     });
 
@@ -1865,7 +1945,10 @@ describe('WebAuthnService', () => {
         .subscribe({
           next: () => {
             const createCall = mockCredentials.create.mock.calls[0][0];
-            expect(createCall.publicKey.challenge).toBeInstanceOf(Uint8Array);
+            // Use constructor name to avoid Jest instanceof issues
+            expect(createCall.publicKey.challenge.constructor.name).toBe(
+              'Uint8Array'
+            );
             // Should decode the base64url string to Uint8Array
             expect(createCall.publicKey.challenge.length).toBeGreaterThan(0);
             done();

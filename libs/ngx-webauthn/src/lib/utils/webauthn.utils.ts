@@ -64,14 +64,7 @@ export function arrayBufferToBase64url(buffer: ArrayBuffer): string {
   return base64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
 }
 
-/**
- * Generates a random challenge as ArrayBuffer
- */
-export function generateChallenge(length = 32): ArrayBuffer {
-  const array = new Uint8Array(length);
-  crypto.getRandomValues(array);
-  return array.buffer;
-}
+
 
 /**
  * Generates a random user ID as ArrayBuffer
