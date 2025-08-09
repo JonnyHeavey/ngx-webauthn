@@ -1,11 +1,3 @@
-# ngx-webauthn
-
-> ⚠️ **BETA SOFTWARE** ⚠️
->
-> This library is currently in beta. The API surface is subject to change in future versions.
-> Please use with caution in production environments and be prepared to update your code
-> when new versions are released.
-
 A comprehensive Angular library that provides a clean, type-safe abstraction over the WebAuthn API. This library offers direct support for native WebAuthn types while providing an optional preset system for common scenarios.
 
 ## Features
