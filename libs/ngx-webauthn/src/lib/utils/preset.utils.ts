@@ -9,6 +9,7 @@
 import { PRESET_MAP, type PresetName } from '../presets/webauthn.presets';
 import type { RegisterConfig, AuthenticateConfig } from '../model';
 import type { WebAuthnConfig } from '../model/service-config';
+import { base64urlToArrayBuffer } from './webauthn.utils';
 
 /**
  * Deep merge utility that properly handles nested objects.
@@ -89,10 +90,7 @@ function processChallenge(challenge?: string | Uint8Array): Uint8Array {
   if (typeof challenge === 'string') {
     // String challenges must be base64url encoded (WebAuthn spec requirement)
     try {
-      return Uint8Array.from(
-        atob(challenge.replace(/-/g, '+').replace(/_/g, '/')),
-        (c) => c.charCodeAt(0)
-      );
+      return new Uint8Array(base64urlToArrayBuffer(challenge));
     } catch (error) {
       throw new Error(
         'Invalid challenge format. String challenges must be base64url encoded. ' +
@@ -122,10 +120,7 @@ function processUserId(
   if (userId) {
     if (typeof userId === 'string') {
       // Assume base64url string, convert to Uint8Array
-      return Uint8Array.from(
-        atob(userId.replace(/-/g, '+').replace(/_/g, '/')),
-        (c) => c.charCodeAt(0)
-      );
+      return new Uint8Array(base64urlToArrayBuffer(userId));
     }
     return userId;
   }
@@ -161,9 +156,7 @@ function processCredentialDescriptors(
   // Convert string IDs to descriptors
   return (credentials as string[]).map((id) => ({
     type: 'public-key' as const,
-    id: Uint8Array.from(atob(id.replace(/-/g, '+').replace(/_/g, '/')), (c) =>
-      c.charCodeAt(0)
-    ),
+    id: new Uint8Array(base64urlToArrayBuffer(id)),
   }));
 }
 
