@@ -3,14 +3,13 @@
  * Modern Angular standalone provider function for WebAuthn service
  */
 
-import { Provider } from '@angular/core';
+import type { Provider } from '@angular/core';
 import { WebAuthnService } from '../services/webauthn.service';
-import {
+import type {
   WebAuthnConfig,
   RelyingPartyConfig,
-  WEBAUTHN_CONFIG,
-  createWebAuthnConfig,
 } from '../model/service-config';
+import { WEBAUTHN_CONFIG, createWebAuthnConfig } from '../model/service-config';
 
 /**
  * Provides WebAuthn service with required relying party configuration
