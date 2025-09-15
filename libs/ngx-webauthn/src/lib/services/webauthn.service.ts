@@ -14,7 +14,7 @@ import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { Observable, from, throwError } from 'rxjs';
 import { map, catchError, switchMap, timeout } from 'rxjs/operators';
 
-import {
+import type {
   WebAuthnSupport,
   RegistrationResponse,
   AuthenticationResponse,
@@ -23,7 +23,7 @@ import {
 } from '../model';
 
 import { RegisterInput, AuthenticateInput } from '../model';
-import {
+import type {
   RemoteRegistrationRequest,
   RemoteAuthenticationRequest,
 } from '../model/remote-config';
@@ -48,8 +48,8 @@ import {
   TimeoutError,
   RemoteEndpointError,
   InvalidRemoteOptionsError,
-  RemoteErrorContext,
 } from '../errors/webauthn.errors';
+import type { RemoteErrorContext } from '../errors/webauthn.errors';
 
 import { WEBAUTHN_CONFIG } from '../model/service-config';
 
