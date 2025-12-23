@@ -71,6 +71,17 @@ function generateUserId(username: string): Uint8Array {
 }
 
 /**
+ * Converts a Uint8Array to a proper ArrayBuffer
+ * This ensures compatibility with TypeScript 5.9+ strict type checking
+ */
+function uint8ArrayToArrayBuffer(uint8Array: Uint8Array): ArrayBuffer {
+  // Create a new ArrayBuffer to ensure we get a proper ArrayBuffer, not SharedArrayBuffer
+  const arrayBuffer = new ArrayBuffer(uint8Array.byteLength);
+  new Uint8Array(arrayBuffer).set(uint8Array);
+  return arrayBuffer;
+}
+
+/**
  * Processes and normalizes challenge values from various input formats.
  * String challenges must be base64url encoded (WebAuthn spec compliance).
  *
@@ -293,11 +304,11 @@ function assembleFinalCreationOptions(
     ...options,
     rp: relyingParty,
     user: {
-      id: userId,
+      id: uint8ArrayToArrayBuffer(userId),
       name: config.username,
       displayName: config.displayName || config.username,
     },
-    challenge,
+    challenge: uint8ArrayToArrayBuffer(challenge),
     pubKeyCredParams: options.pubKeyCredParams ||
       webAuthnConfig.defaultAlgorithms || [
         { type: 'public-key', alg: -7 }, // ES256
@@ -412,7 +423,7 @@ export function buildRequestOptionsFromConfig(
   // Build final options
   const finalOptions: PublicKeyCredentialRequestOptions = {
     ...options,
-    challenge,
+    challenge: uint8ArrayToArrayBuffer(challenge),
     allowCredentials: processCredentialDescriptors(config.allowCredentials),
   };
 

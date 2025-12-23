@@ -9,7 +9,7 @@
  */
 export function stringToArrayBuffer(str: string): ArrayBuffer {
   const encoder = new TextEncoder();
-  return encoder.encode(str);
+  return encoder.encode(str).buffer;
 }
 
 /**
@@ -63,8 +63,6 @@ export function arrayBufferToBase64url(buffer: ArrayBuffer): string {
   const base64 = arrayBufferToBase64(buffer);
   return base64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
 }
-
-
 
 /**
  * Generates a random user ID as ArrayBuffer
