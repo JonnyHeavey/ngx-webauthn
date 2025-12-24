@@ -48,6 +48,7 @@
       "inputs": ["production", "^production"]
     },
     "nx-release-publish": {
+      "dependsOn": ["build"],
       "options": {
         "packageRoot": "dist/libs/{projectName}"
       }
@@ -77,13 +78,8 @@
       }
     },
     "version": {
-      "preVersionCommand": "npx nx run-many -t build",
       "manifestRootsToUpdate": [
-        "{projectRoot}",
-        {
-          "path": "dist/libs/{projectName}",
-          "preserveLocalDependencyProtocols": false
-        }
+        "{projectRoot}"
       ]
     }
   }

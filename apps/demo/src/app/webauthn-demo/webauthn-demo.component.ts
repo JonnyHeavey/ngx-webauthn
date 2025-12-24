@@ -1,5 +1,5 @@
 import { Component, inject, signal } from '@angular/core';
-import { CommonModule } from '@angular/common';
+
 import { FormsModule } from '@angular/forms';
 import { MatCardModule } from '@angular/material/card';
 import { MatButtonModule } from '@angular/material/button';
@@ -42,7 +42,6 @@ interface StoredCredential {
   selector: 'app-webauthn-demo',
   standalone: true,
   imports: [
-    CommonModule,
     FormsModule,
     MatCardModule,
     MatButtonModule,
@@ -55,8 +54,8 @@ interface StoredCredential {
     MatChipsModule,
     MatDividerModule,
     MatExpansionModule,
-    MatSelectModule,
-  ],
+    MatSelectModule
+],
   template: `
     <div class="demo-container">
       <mat-card class="header-card">
