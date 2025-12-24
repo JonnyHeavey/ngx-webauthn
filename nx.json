@@ -43,7 +43,6 @@
       }
     },
     "@nx/angular:package": {
-      "cache": true,
       "dependsOn": ["^build"],
       "inputs": ["production", "^production"]
     },
@@ -76,11 +75,6 @@
         "file": false,
         "createRelease": "github"
       }
-    },
-    "version": {
-      "manifestRootsToUpdate": [
-        "{projectRoot}"
-      ]
     }
   }
 }

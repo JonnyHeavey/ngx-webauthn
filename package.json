@@ -2,7 +2,9 @@
   "name": "@ngx-webauthn/source",
   "version": "0.0.0",
   "license": "MIT",
-  "scripts": {},
+  "scripts": {
+    "release": "nx release version --projects=ngx-webauthn --git-commit --git-tag --git-push && nx run ngx-webauthn:build && nx release publish --projects=ngx-webauthn"
+  },
   "private": true,
   "dependencies": {
     "@angular/animations": "21.0.6",
