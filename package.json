@@ -3,7 +3,7 @@
   "version": "0.0.0",
   "license": "MIT",
   "scripts": {
-    "release": "nx release --projects=ngx-webauthn --skip-publish --git-push && nx run ngx-webauthn:build && nx release publish --projects=ngx-webauthn"
+    "release": "nx release --projects=ngx-webauthn --skip-publish && nx run ngx-webauthn:build && nx release publish --projects=ngx-webauthn"
   },
   "private": true,
   "dependencies": {
