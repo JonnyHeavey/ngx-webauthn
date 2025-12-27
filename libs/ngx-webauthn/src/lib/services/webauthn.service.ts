@@ -411,7 +411,7 @@ export class WebAuthnService {
    * ```
    */
   authenticateRemote<T extends Record<string, any> = Record<string, any>>(
-    request: RemoteAuthenticationRequest<T> = {} as T
+    request?: RemoteAuthenticationRequest<T>
   ): Observable<AuthenticationResponse> {
     this.validateRemoteAuthenticationConfig();
 
@@ -420,7 +420,7 @@ export class WebAuthnService {
       this.config.remoteEndpoints?.requestOptions?.timeout || 10000;
 
     return this.http
-      .post<PublicKeyCredentialRequestOptionsJSON>(endpoint, request)
+      .post<PublicKeyCredentialRequestOptionsJSON>(endpoint, request || {})
       .pipe(
         timeout(timeoutMs),
         map((options) => {
