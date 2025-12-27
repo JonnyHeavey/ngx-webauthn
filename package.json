@@ -3,11 +3,16 @@
   "version": "0.0.0",
   "license": "MIT",
   "scripts": {
-    "release": "nx release --projects=ngx-webauthn --skip-publish && nx run ngx-webauthn:build && nx release publish --projects=ngx-webauthn"
+    "release": "nx release --projects=ngx-webauthn --skip-publish && nx run ngx-webauthn:build && nx release publish --projects=ngx-webauthn",
+    "backend:start": "node apps/webauthn-backend/server.js",
+    "backend:dev": "nodemon apps/webauthn-backend/server.js"
   },
   "private": true,
   "dependencies": {
     "@angular/animations": "21.0.6",
+    "express": "^4.18.2",
+    "body-parser": "^1.20.2",
+    "cors": "^2.8.5",
     "@angular/cdk": "21.0.5",
     "@angular/common": "21.0.6",
     "@angular/compiler": "21.0.6",
@@ -22,6 +27,7 @@
   },
   "devDependencies": {
     "@angular-devkit/core": "21.0.4",
+    "nodemon": "^3.0.1",
     "@angular-devkit/schematics": "21.0.4",
     "@angular/build": "21.0.4",
     "@angular/cli": "21.0.4",

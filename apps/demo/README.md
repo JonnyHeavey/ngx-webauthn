@@ -58,6 +58,63 @@ The app automatically detects and displays:
 - HTTPS (required for WebAuthn API)
 - Authenticator device (built-in or external)
 
+## Enhanced Features
+
+### Dual-Mode Operation
+
+The demo now supports two modes of operation:
+
+#### Mock Mode
+
+- Uses client-side generated challenges
+- No backend service required
+- Perfect for quick demonstrations
+
+#### Remote Mode
+
+- Uses server-generated challenges from the WebAuthn backend
+- Requires backend service running on `http://localhost:3001`
+- Provides realistic production-like experience
+- Only available on localhost for security
+
+### Backend Integration
+
+When using remote mode, the demo integrates with a Node.js WebAuthn backend service that:
+
+- Generates cryptographically secure 32-byte challenges
+- Stores credentials in memory
+- Verifies registration and authentication responses
+- Provides real-time health monitoring
+
+### UI Enhancements
+
+- **Backend Connection Status**: Shows real-time connection to backend
+- **Mode Toggle**: Switch between mock and remote modes
+- **Server Challenge Display**: View server-generated challenges
+- **Enhanced Error Handling**: Clear error messages for network issues
+
+### Usage
+
+1. Start the backend service:
+
+   ```bash
+   npm run backend:start
+   ```
+
+2. Start the demo:
+
+   ```bash
+   npx nx serve demo --port=4201
+   ```
+
+3. Open `http://localhost:4201` in your browser
+
+4. Enable "Use Remote Backend" to use server-generated challenges
+
+### Testing
+
+See the comprehensive test report at [`../../WEBAUTHN-INTEGRATION-TEST-REPORT.md`](../../WEBAUTHN-INTEGRATION-TEST-REPORT.md)
+
 ## Development
 
 ```bash

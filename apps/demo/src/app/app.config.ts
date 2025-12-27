@@ -51,6 +51,15 @@ export const appConfig: ApplicationConfig = {
       {
         // Optional configuration overrides
         defaultTimeout: 60000, // 60 seconds
+        // Remote endpoints configuration for backend integration
+        remoteEndpoints: {
+          registration: 'http://localhost:3001/api/webauthn/register/options',
+          authentication:
+            'http://localhost:3001/api/webauthn/authenticate/options',
+          requestOptions: {
+            timeout: 10000, // 10 seconds network timeout
+          },
+        },
         // You can add more options here:
         // enforceUserVerification: false,
         // defaultAttestation: 'none',

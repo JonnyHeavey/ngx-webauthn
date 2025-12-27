@@ -43,6 +43,61 @@ The demo showcases:
 
 Visit `http://localhost:4200` to explore the demo.
 
+## Enhanced Demo with Backend Integration
+
+The demo application now supports dual-mode operation:
+
+### Mock Mode (Default)
+
+- Uses client-side generated challenges
+- No backend required
+- Suitable for basic testing and demonstrations
+
+### Remote Mode (Localhost Only)
+
+- Uses server-generated cryptographically secure challenges
+- Requires the WebAuthn backend service
+- Provides realistic integration testing
+- Demonstrates production-ready WebAuthn flow
+
+### Quick Start
+
+1. **Start the Backend Service:**
+
+   ```bash
+   npm run backend:start
+   ```
+
+   The backend will run on `http://localhost:3001`
+
+2. **Start the Demo Application:**
+
+   ```bash
+   npx nx serve demo --port=4201
+   ```
+
+   The demo will run on `http://localhost:4201`
+
+3. **Access the Demo:**
+   - Open `http://localhost:4201` in your browser
+   - Enable "Use Remote Backend" toggle (only visible on localhost)
+   - The demo will now use server-generated challenges
+
+### Backend Service
+
+The backend service provides:
+
+- Cryptographically secure challenge generation
+- WebAuthn registration and authentication options
+- Credential storage and verification
+- Real-time health monitoring
+
+For more details, see [`apps/webauthn-backend/README.md`](apps/webauthn-backend/README.md)
+
+### Testing
+
+For comprehensive testing instructions, see [`WEBAUTHN-INTEGRATION-TEST-REPORT.md`](WEBAUTHN-INTEGRATION-TEST-REPORT.md)
+
 ## Quick Start
 
 ### Installation
