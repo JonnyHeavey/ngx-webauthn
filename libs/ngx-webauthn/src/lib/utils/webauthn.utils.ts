@@ -136,6 +136,18 @@ export function getSupportedTransports(): AuthenticatorTransport[] {
     transports.push('ble');
   }
 
+  // Add hybrid transport for Conditional UI (passkeys in autofill)
+  // This is a browser capability, not hardware transport
+  // Supported in Chrome 116+, Safari 18+, Edge 116+
+  if (
+    typeof window !== 'undefined' &&
+    window.PublicKeyCredential &&
+    typeof window.PublicKeyCredential.isConditionalMediationAvailable ===
+      'function'
+  ) {
+    transports.push('hybrid');
+  }
+
   return transports;
 }
 
