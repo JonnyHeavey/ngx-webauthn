@@ -1,38 +1,34 @@
-import { Component, inject, signal, computed } from '@angular/core';
+import { Component, computed, inject, signal } from '@angular/core';
 
 import { FormsModule } from '@angular/forms';
-import { MatCardModule } from '@angular/material/card';
 import { MatButtonModule } from '@angular/material/button';
-import { MatInputModule } from '@angular/material/input';
-import { MatFormFieldModule } from '@angular/material/form-field';
-import { MatTabsModule } from '@angular/material/tabs';
-import { MatIconModule } from '@angular/material/icon';
-import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
-import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
+import { MatCardModule } from '@angular/material/card';
 import { MatChipsModule } from '@angular/material/chips';
 import { MatDividerModule } from '@angular/material/divider';
 import { MatExpansionModule } from '@angular/material/expansion';
+import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatIconModule } from '@angular/material/icon';
+import { MatInputModule } from '@angular/material/input';
+import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatSelectModule } from '@angular/material/select';
-import { Observable, throwError } from 'rxjs';
-import { tap, catchError } from 'rxjs/operators';
+import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
+import { MatTabsModule } from '@angular/material/tabs';
 import {
+  AuthenticateConfig,
+  AuthenticationResponse,
+  AuthenticatorError,
+  InvalidRemoteOptionsError,
+  PresetName,
+  RegisterConfig,
+  RegistrationResponse,
+  RemoteEndpointError,
+  UnsupportedOperationError,
+  UserCancelledError,
+  WebAuthnError,
   WebAuthnService,
   WebAuthnSupport,
-  RegistrationResponse,
-  AuthenticationResponse,
-  RegisterConfig,
-  AuthenticateConfig,
-  PresetName,
-  PASSKEY_PRESET,
-  EXTERNAL_SECURITY_KEY_PRESET,
-  PLATFORM_AUTHENTICATOR_PRESET,
-  WebAuthnError,
-  UserCancelledError,
-  AuthenticatorError,
-  UnsupportedOperationError,
-  RemoteEndpointError,
-  InvalidRemoteOptionsError,
 } from 'ngx-webauthn';
+import { tap } from 'rxjs/operators';
 
 interface StoredCredential {
   id: string;
