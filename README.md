@@ -13,84 +13,7 @@ A powerful Angular library for WebAuthn (Web Authentication API) integration tha
 - 🎯 **Preset System**: Optional pre-configured setups for common patterns (passkeys, 2FA, device-bound)
 - 📖 **Transparent**: All preset configurations are exported as inspectable constants
 
-## Demo Application
-
-**🌟 [Try the live demo](https://jonnyheavey.github.io/ngx-webauthn/) 🌟**
-
-You can try the interactive demo online at https://jonnyheavey.github.io/ngx-webauthn/ to see the library in action.
-
-Alternatively, run the demo locally:
-
-```bash
-# Start the demo app
-npx nx serve demo
-```
-
-The demo showcases:
-
-- Browser support detection
-- Native WebAuthn option usage
-- Preset-based credential registration
-- Authentication with different configurations
-- Credential management interface
-- Real-time feedback and error handling
-
-Visit `http://localhost:4200` to explore the demo.
-
-## Enhanced Demo with Backend Integration
-
-The demo application now supports dual-mode operation:
-
-### Mock Mode (Default)
-
-- Uses client-side generated challenges
-- No backend required
-- Suitable for basic testing and demonstrations
-
-### Remote Mode (Localhost Only)
-
-- Uses server-generated cryptographically secure challenges
-- Requires the WebAuthn backend service
-- Provides realistic integration testing
-- Demonstrates production-ready WebAuthn flow
-
-### Quick Start
-
-1. **Start the Backend Service:**
-
-   ```bash
-   npm run backend:start
-   ```
-
-   The backend will run on `http://localhost:3001`
-
-2. **Start the Demo Application:**
-
-   ```bash
-   npx nx serve demo --port=4201
-   ```
-
-   The demo will run on `http://localhost:4201`
-
-3. **Access the Demo:**
-   - Open `http://localhost:4201` in your browser
-   - Enable "Use Remote Backend" toggle (only visible on localhost)
-   - The demo will now use server-generated challenges
-
-### Backend Service
-
-The backend service provides:
-
-- Cryptographically secure challenge generation
-- WebAuthn registration and authentication options
-- Credential storage and verification
-- Real-time health monitoring
-
-For more details, see [`apps/webauthn-backend/README.md`](apps/webauthn-backend/README.md)
-
-### Testing
-
-For comprehensive testing instructions, see [`WEBAUTHN-INTEGRATION-TEST-REPORT.md`](WEBAUTHN-INTEGRATION-TEST-REPORT.md)
+🌟 [Try the live demo](https://jonnyheavey.github.io/ngx-webauthn/) 🌟
 
 ## Quick Start
 
@@ -116,6 +39,53 @@ bootstrapApplication(AppComponent, {
   ],
 });
 ```
+
+### Simple Usage
+
+Choose between native WebAuthn types or simplified presets:
+
+```typescript
+import { Component, inject } from '@angular/core';
+import { WebAuthnService } from 'ngx-webauthn';
+
+@Component({...})
+export class MyComponent {
+  private webAuthn = inject(WebAuthnService);
+
+  // Native WebAuthn approach - full control
+  registerNative() {
+    this.webAuthn.register({
+      rp: { name: 'My App', id: 'myapp.com' },
+      user: {
+        id: new TextEncoder().encode('user123'),
+        name: 'john.doe@example.com',
+        displayName: 'John Doe',
+      },
+      challenge: crypto.getRandomValues(new Uint8Array(32)),
+      pubKeyCredParams: [{ type: 'public-key', alg: -7 }],
+    }).subscribe({
+      next: (result) => console.log('Registration successful:', result),
+      error: (error) => console.error('Registration failed:', error)
+    });
+  }
+
+  // Preset approach - simplified
+  registerPreset() {
+    this.webAuthn.register({
+      username: 'john.doe@example.com',
+      preset: 'passkey',
+      rp: { name: 'My App' }
+    }).subscribe({
+      next: (result) => console.log('Registration successful:', result),
+      error: (error) => console.error('Registration failed:', error)
+    });
+  }
+}
+```
+
+For detailed usage examples and advanced patterns, see [Usage Examples](#usage-examples).
+
+## Usage Examples
 
 ### Basic Usage with Native WebAuthn Types
 
@@ -216,7 +186,7 @@ export class MyComponent {
 }
 ```
 
-### Alternative: Simplified Preset System
+### Simplified Preset System
 
 For common scenarios, the library provides an optional preset system that handles the complexity for you:
 
@@ -264,11 +234,179 @@ export class MyComponent {
 }
 ```
 
-## Native WebAuthn Options Support
+### Common Integration Patterns
+
+#### Passwordless Authentication with Passkeys
+
+Implement a modern passwordless authentication flow using passkeys:
+
+```typescript
+@Injectable({ providedIn: 'root' })
+export class AuthService {
+  private webAuthn = inject(WebAuthnService);
+
+  // Register a new passkey for passwordless login
+  registerPasskey(email: string, displayName: string) {
+    return this.webAuthn.register({
+      username: email,
+      displayName,
+      preset: 'passkey',
+      rp: { name: 'My App', id: window.location.hostname },
+    });
+  }
+
+  // Authenticate with passkey (passwordless)
+  loginWithPasskey() {
+    return this.webAuthn.authenticate({
+      preset: 'passkey',
+    });
+  }
+}
+```
+
+#### Two-Factor Authentication (2FA) with Security Keys
+
+Add a second factor using external security keys:
+
+```typescript
+@Component({...})
+export class TwoFactorSetupComponent {
+  private webAuthn = inject(WebAuthnService);
+
+  // Register security key as second factor
+  addSecurityKey(userId: string) {
+    this.webAuthn.register({
+      username: userId,
+      preset: 'externalSecurityKey',
+      rp: { name: 'My App' }
+    }).subscribe({
+      next: (result) => {
+        // Send credential ID to server for storage
+        this.saveCredentialToServer(result.credentialId);
+      },
+      error: (error) => console.error('Security key registration failed:', error)
+    });
+  }
+
+  // Authenticate with security key (after password)
+  verifySecurityKey(credentialId: string) {
+    this.webAuthn.authenticate({
+      preset: 'externalSecurityKey',
+      allowCredentials: [credentialId]
+    }).subscribe({
+      next: (result) => {
+        // Verify signature with server
+        this.verifyWithServer(result);
+      }
+    });
+  }
+}
+```
+
+#### Device-Bound Credentials for High Security
+
+Create device-bound credentials that require platform authenticators:
+
+```typescript
+@Component({...})
+export class HighSecurityComponent {
+  private webAuthn = inject(WebAuthnService);
+
+  // Register device-bound credential
+  registerDeviceBound(userId: string) {
+    this.webAuthn.register({
+      username: userId,
+      preset: 'platformAuthenticator',
+      rp: { name: 'Secure App' }
+    }).subscribe({
+      next: (result) => {
+        // Credential is bound to this device only
+        console.log('Device-bound credential registered');
+      }
+    });
+  }
+
+  // Authenticate with device-bound credential
+  authenticateDeviceBound() {
+    this.webAuthn.authenticate({
+      preset: 'platformAuthenticator'
+    }).subscribe({
+      next: (result) => {
+        // User verified with biometrics/PIN
+        console.log('Device-bound authentication successful');
+      }
+    });
+  }
+}
+```
+
+## Advanced Topics
+
+### Available Presets
+
+For convenience, the library includes presets for common WebAuthn scenarios:
+
+#### `passkey`
+
+**Modern passwordless, cross-device credentials**
+
+- Requires resident keys (discoverable credentials)
+- Prefers user verification but doesn't require it
+- Works with both platform and cross-platform authenticators
+- Supports credential syncing across devices
+
+#### `externalSecurityKey`
+
+**External security key as second factor after password**
+
+- Discourages resident keys (server-side credential storage)
+- Prefers user verification
+- Favors cross-platform authenticators (USB/NFC security keys)
+- Credentials typically not synced between devices
+
+#### `platformAuthenticator`
+
+**High-security, platform authenticator credentials**
+
+- Requires platform authenticators (built-in biometrics/PIN)
+- Requires resident keys for discoverability
+- Requires user verification (biometric/PIN)
+- Credentials bound to specific device (no syncing)
+
+#### Preset with Overrides
+
+```typescript
+this.webAuthn
+  .register({
+    username: 'john.doe@example.com',
+    preset: 'passkey',
+    // Override preset defaults with native WebAuthn options
+    authenticatorSelection: {
+      userVerification: 'required',
+    },
+    timeout: 30000,
+  })
+  .subscribe((result) => {
+    console.log('Custom passkey registered:', result);
+  });
+```
+
+#### Inspecting Presets
+
+All presets are exported as constants for transparency:
+
+```typescript
+import { PASSKEY_PRESET, EXTERNAL_SECURITY_KEY_PRESET, PLATFORM_AUTHENTICATOR_PRESET } from 'ngx-webauthn';
+
+console.log('Passkey configuration:', PASSKEY_PRESET);
+// Output: { authenticatorSelection: { residentKey: 'required', ... }, ... }
+```
+
+### Native WebAuthn Options Support
 
 The library provides full support for both native WebAuthn types and their JSON equivalents:
 
-### Registration Options
+#### Registration Options
 
 ```typescript
 // Native ArrayBuffer-based options
@@ -324,7 +462,7 @@ const jsonOptions: PublicKeyCredentialCreationOptionsJSON = {
 };
 ```
 
-### Authentication Options
+#### Authentication Options
 
 ```typescript
 // Native ArrayBuffer-based options
@@ -356,114 +494,7 @@ const jsonRequest: PublicKeyCredentialRequestOptionsJSON = {
 };
 ```
 
-## Available Presets (Optional)
-
-For convenience, the library includes presets for common WebAuthn scenarios:
-
-### `passkey`
-
-**Modern passwordless, cross-device credentials**
-
-- Requires resident keys (discoverable credentials)
-- Prefers user verification but doesn't require it
-- Works with both platform and cross-platform authenticators
-- Supports credential syncing across devices
-
-### `externalSecurityKey`
-
-**External security key as second factor after password**
-
-- Discourages resident keys (server-side credential storage)
-- Prefers user verification
-- Favors cross-platform authenticators (USB/NFC security keys)
-- Credentials typically not synced between devices
-
-### `platformAuthenticator`
-
-**High-security, platform authenticator credentials**
-
-- Requires platform authenticators (built-in biometrics/PIN)
-- Requires resident keys for discoverability
-- Requires user verification (biometric/PIN)
-- Credentials bound to specific device (no syncing)
-
-### Preset with Overrides
-
-```typescript
-this.webAuthn
-  .register({
-    username: 'john.doe@example.com',
-    preset: 'passkey',
-    // Override preset defaults with native WebAuthn options
-    authenticatorSelection: {
-      userVerification: 'required',
-    },
-    timeout: 30000,
-  })
-  .subscribe((result) => {
-    console.log('Custom passkey registered:', result);
-  });
-```
-
-### Inspecting Presets
-
-All presets are exported as constants for transparency:
-
-```typescript
-import { PASSKEY_PRESET, EXTERNAL_SECURITY_KEY_PRESET, PLATFORM_AUTHENTICATOR_PRESET } from 'ngx-webauthn';
-
-console.log('Passkey configuration:', PASSKEY_PRESET);
-// Output: { authenticatorSelection: { residentKey: 'required', ... }, ... }
-```
-
-## API Reference
-
-### Service Methods
-
-```typescript
-class WebAuthnService {
-  // Check if WebAuthn is supported
-  isSupported(): boolean;
-
-  // Get detailed support information
-  getSupport(): Observable<WebAuthnSupport>;
-
-  // Register with native options, JSON options, or preset config
-  register(input: PublicKeyCredentialCreationOptions | PublicKeyCredentialCreationOptionsJSON | RegisterConfig): Observable<RegistrationResponse>;
-
-  // Authenticate with native options, JSON options, or preset config
-  authenticate(input: PublicKeyCredentialRequestOptions | PublicKeyCredentialRequestOptionsJSON | AuthenticateConfig): Observable<AuthenticationResponse>;
-}
-```
-
-### RegisterConfig (Preset System)
-
-```typescript
-interface RegisterConfig {
-  username: string; // Required: username for the credential
-  preset?: 'passkey' | 'externalSecurityKey' | 'platformAuthenticator';
-  displayName?: string; // Defaults to username
-  rp?: { name: string; id?: string }; // Relying party info
-  challenge?: string | Uint8Array; // Auto-generated if not provided
-  timeout?: number; // Defaults to 60000ms
-  // ... other WebAuthn options as overrides
-}
-```
-
-### AuthenticateConfig (Preset System)
-
-```typescript
-interface AuthenticateConfig {
-  username?: string; // Optional username hint
-  preset?: 'passkey' | 'externalSecurityKey' | 'platformAuthenticator';
-  challenge?: string | Uint8Array; // Auto-generated if not provided
-  timeout?: number; // Defaults to 60000ms
-  allowCredentials?: string[] | PublicKeyCredentialDescriptor[];
-  // ... other WebAuthn options as overrides
-}
-```
-
-## Error Handling
+### Error Handling
 
 The library provides specific error types for better error handling:
 
@@ -486,6 +517,69 @@ this.webAuthn.register(creationOptions).subscribe({
   },
 });
 ```
+
+### Configuration Options
+
+The library accepts configuration options when providing the service:
+
+```typescript
+provideWebAuthn({
+  defaultTimeout: 60000, // Default timeout in milliseconds
+});
+```
+
+## Demo Application
+
+Explore the library's capabilities through an interactive demo showcasing:
+
+- Browser support detection
+- Native WebAuthn option usage
+- Preset-based credential registration
+- Authentication with different configurations
+- Credential management interface
+- Real-time feedback and error handling
+
+### Quick Local Demo
+
+```bash
+# Start the demo app
+npx nx serve demo
+```
+
+Visit `http://localhost:4200` to explore the demo.
+
+### Enhanced Demo with Backend
+
+The demo supports dual-mode operation:
+
+**Mock Mode (Default)**
+
+- Uses client-side generated challenges
+- No backend required
+- Suitable for basic testing and demonstrations
+
+**Remote Mode (Localhost Only)**
+
+- Uses server-generated cryptographically secure challenges
+- Requires the WebAuthn backend service
+- Provides realistic integration testing
+- Demonstrates production-ready WebAuthn flow
+
+To run with backend:
+
+```bash
+# Terminal 1: Start the backend
+npm run backend:start
+
+# Terminal 2: Start the demo on port 4201
+npx nx serve demo --port=4201
+```
+
+Then open `http://localhost:4201` and enable the "Use Remote Backend" toggle.
+
+For backend details, see [`apps/webauthn-backend/README.md`](apps/webauthn-backend/README.md)
+
+For comprehensive testing instructions, see [`WEBAUTHN-INTEGRATION-TEST-REPORT.md`](WEBAUTHN-INTEGRATION-TEST-REPORT.md)
 
 ## Library Development
 
@@ -530,27 +624,30 @@ npx nx lint ngx-webauthn
 
 MIT License - see LICENSE file for details.
 
-## Links
+## Links & Resources
+
+### Documentation & Specifications
 
 - [WebAuthn Specification](https://w3c.github.io/webauthn/)
 - [MDN WebAuthn Guide](https://developer.mozilla.org/en-US/docs/Web/API/Web_Authentication_API)
 - [Passkey Guidelines](https://passkeys.dev/)
+
+### Framework & Tools
+
 - [Angular Documentation](https://angular.io/)
 - [Nx Documentation](https://nx.dev/)
 
-## Demo Deployment
+### Demo Deployment
 
 The demo application is automatically deployed to GitHub Pages on every push to the main branch.
 
 **Live Demo:** [https://jonnyheavey.github.io/ngx-webauthn/](https://jonnyheavey.github.io/ngx-webauthn/)
 
-### Deployment Workflow
+**Deployment Workflow:**
 
-- **Trigger:** Automatic on main branch pushes + manual dispatch
-- **Build Process:** Library → Demo (with GitHub Pages base href)
-- **Deployment:** GitHub Actions → GitHub Pages
-- **URL:** `https://jonnyheavey.github.io/ngx-webauthn/`
+- Trigger: Automatic on main branch pushes + manual dispatch
+- Build Process: Library → Demo (with GitHub Pages base href)
+- Deployment: GitHub Actions → GitHub Pages
+- URL: `https://jonnyheavey.github.io/ngx-webauthn/`
 
-### Development Notes
-
-The demo uses WebAuthn which requires HTTPS. GitHub Pages provides this automatically, making it suitable for real WebAuthn testing. Note that credentials created on `localhost` during development won't work on the GitHub Pages domain due to WebAuthn's origin-based security model.
+**Note:** The demo uses WebAuthn which requires HTTPS. GitHub Pages provides this automatically, making it suitable for real WebAuthn testing. Credentials created on `localhost` during development won't work on the GitHub Pages domain due to WebAuthn's origin-based security model.
